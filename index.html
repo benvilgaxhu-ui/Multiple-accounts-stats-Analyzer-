@@ -38,7 +38,7 @@
       <label class="text-xs font-semibold text-slate-300">Player Accounts (One per line)</label>
       <button onclick="clearList()" class="text-xs text-slate-500 hover:text-slate-300">Clear list</button>
     </div>
-    <textarea id="accountsInput" rows="6" class="w-full bg-[#0a0d14] border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono resize-y" placeholder="Enter usernames..."></textarea>
+    <textarea id="accountsInput" rows="6" class="w-full bg-[#0a0d14] border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono resize-y" placeholder="Paste or type player usernames here (one per line)..."></textarea>
     
     <div class="mt-3 flex flex-wrap items-center gap-3">
       <button id="fetchBtn" onclick="startAggregation()" class="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg flex items-center gap-2 transition disabled:opacity-50">
@@ -96,12 +96,12 @@
             <th class="p-3 text-right">Defeats</th>
             <th class="p-3 text-right">Win %</th>
             <th class="p-3 text-right">Suicides</th>
-            <th class="p-3 text-right">Level</th>
+            <th class="p-3 text-right">XP</th>
           </tr>
         </thead>
         <tbody id="tableBody" class="divide-y divide-slate-800/60 font-mono">
           <tr>
-            <td colspan="10" class="p-5 text-center text-slate-500 font-sans">No data loaded yet. Click Calculate to begin.</td>
+            <td colspan="10" class="p-5 text-center text-slate-500 font-sans">No data loaded yet. Enter usernames above and click calculate.</td>
           </tr>
         </tbody>
       </table>
@@ -109,21 +109,6 @@
   </div>
 
   <script>
-    const defaultAccounts = [
-      "Redflag", "Invincible", "Johnwick", "Biscuit", "Ghost rider",
-      "Lonelymaster", "Drstone", "Not_MAY", "Buffer", "Kimdokja",
-      "Lloydfrontera", "Devilmaycry", "Krishnaichiban", "vengefuldeathbazooka",
-      "Perseverance", "Sudo", "SnakeEyes", "Okaberintarou", "SilverSurfer",
-      "Kernel", "Chmod777", "MoonKnight", "Lelouch Lamperouge", "BrianOConner",
-      "Asta", "Ben 10", "uraharaKisuke", "Ulquiorra", "Bobafett",
-      "HanSolo", "R2-D2", "Pun", "ReidAstrea", "YuuichiKatagiriS",
-      "Julius Juukulius", "Gintoki Sakata", "Isagi Yoichi", "Saiki kusuo",
-      "Black Star", "Sung Jinwoo", "ReigenArataka", "ShigeoKageyama",
-      "Ryuugamine", "Bulbasaur", "Morpheus", "Zenitsu", "Tanjirou",
-      "NotScientist", "Cortex", "Mach3", "Notinvincible", "Incredible"
-    ];
-
-    document.getElementById("accountsInput").value = defaultAccounts.join("\n");
     let parsedResults = [];
 
     function clearList() {
@@ -161,7 +146,7 @@
         .map(x => x.trim())
         .filter(x => x.length > 0);
 
-      if (lines.length === 0) return alert("Please enter at least one account.");
+      if (lines.length === 0) return alert("Please enter at least one account username.");
 
       const fetchBtn = document.getElementById("fetchBtn");
       const statusText = document.getElementById("statusText");
@@ -172,7 +157,7 @@
       parsedResults = [];
       tableBody.innerHTML = "";
 
-      let totals = { kills: 0, deaths: 0, victories: 0, defeats: 0, suicides: 0 };
+      let totals = { kills: 0, deaths: 0, victories: 0, defeats: 0, suicides: 0, xp: 0 };
 
       for (let i = 0; i < lines.length; i++) {
         const username = lines[i];
@@ -188,20 +173,29 @@
           victories: 0,
           defeats: 0,
           suicides: 0,
-          level: 0,
+          xp: 0,
           kd: "0.00",
           winRate: "0.0%"
         };
 
         if (data) {
-          rowData.kills = cleanNum(data.kills ?? data.totalKills);
-          rowData.deaths = cleanNum(data.deaths ?? data.totalDeaths);
-          rowData.victories = cleanNum(data.victories ?? data.wins);
-          rowData.defeats = cleanNum(data.defeats ?? data.losses);
+          // Exact TankTrouble JSON Keys
+          rowData.kills = cleanNum(data.kills);
+          rowData.deaths = cleanNum(data.deaths);
+          rowData.victories = cleanNum(data.victories);
           rowData.suicides = cleanNum(data.suicides);
-          rowData.level = cleanNum(data.level);
+          rowData.xp = cleanNum(data.experience ?? data.xp);
 
+          // IronVault Defeats Calculation: Total Deaths minus Suicides (or total deaths)
+          rowData.defeats = Math.max(0, rowData.deaths - rowData.suicides);
+          if (rowData.defeats === 0 && rowData.deaths > 0) {
+            rowData.defeats = rowData.deaths;
+          }
+
+          // K/D Calculation
           rowData.kd = rowData.deaths > 0 ? (rowData.kills / rowData.deaths).toFixed(2) : String(rowData.kills);
+
+          // Realistic Win Rate Calculation
           const totalGames = rowData.victories + rowData.defeats;
           rowData.winRate = totalGames > 0 ? ((rowData.victories / totalGames) * 100).toFixed(1) + "%" : "0.0%";
 
@@ -210,6 +204,7 @@
           totals.victories += rowData.victories;
           totals.defeats += rowData.defeats;
           totals.suicides += rowData.suicides;
+          totals.xp += rowData.xp;
         }
 
         parsedResults.push(rowData);
@@ -235,13 +230,12 @@
           <td class="p-3 text-right text-yellow-400 font-bold">${rowData.kd}</td>
           <td class="p-3 text-right text-emerald-400">${rowData.victories.toLocaleString()}</td>
           <td class="p-3 text-right text-rose-400">${rowData.defeats.toLocaleString()}</td>
-          <td class="p-3 text-right text-blue-400">${rowData.winRate}</td>
+          <td class="p-3 text-right text-blue-400 font-bold">${rowData.winRate}</td>
           <td class="p-3 text-right text-slate-400">${rowData.suicides.toLocaleString()}</td>
-          <td class="p-3 text-right text-slate-200 font-sans">${rowData.level}</td>
+          <td class="p-3 text-right text-slate-200 font-sans">${rowData.xp.toLocaleString()}</td>
         `;
         tableBody.appendChild(tr);
 
-        // Polite delay to avoid server rate limiting
         await new Promise(r => setTimeout(r, 120));
       }
 
@@ -251,9 +245,9 @@
 
     function exportCSV() {
       if (!parsedResults.length) return alert("No parsed data to export.");
-      let csv = "User,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,Level\n";
+      let csv = "User,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,XP\n";
       parsedResults.forEach(r => {
-        csv += `"${r.user}",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.level}\n`;
+        csv += `"${r.user}",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.xp}\n`;
       });
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const a = document.createElement("a");
