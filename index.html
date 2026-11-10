@@ -10,6 +10,10 @@
     body { background-color: #0b0e14; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     .card { background-color: #121824; border: 1px solid #1e293b; }
     .table-row:hover { background-color: #1a2234; }
+    .retry-btn:hover { color: #f43f5e; transform: rotate(45deg); }
+    .retry-btn { transition: all 0.2s ease; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: #f8fafc; }
   </style>
 </head>
 <body class="p-4 md:p-8 max-w-7xl mx-auto">
@@ -81,6 +85,24 @@
     </div>
   </div>
 
+  <!-- Table Header Controls (Sorting Selector) -->
+  <div class="flex items-center justify-between mb-3 px-1">
+    <div class="text-xs font-semibold text-slate-400 flex items-center gap-2">
+      <i class="fa-solid fa-list-ol text-slate-500"></i> Player Breakdowns
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-xs text-slate-400">Order by:</label>
+      <select id="sortSelect" onchange="changeSortMode(this.value)" class="bg-[#121824] border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-red-500">
+        <option value="original">Original Order (As Entered)</option>
+        <option value="kills_desc" selected>Kills: High → Low (Descending)</option>
+        <option value="kills_asc">Kills: Low → High (Ascending)</option>
+        <option value="kd_desc">K/D: High → Low</option>
+        <option value="winrate_desc">Win Rate: High → Low</option>
+        <option value="level_desc">Level: High → Low</option>
+      </select>
+    </div>
+  </div>
+
   <!-- Detailed Table -->
   <div class="card rounded-xl overflow-hidden">
     <div class="overflow-x-auto">
@@ -88,15 +110,15 @@
         <thead class="bg-[#161e2e] text-slate-400 uppercase text-[10px] border-b border-slate-800">
           <tr>
             <th class="p-3">#</th>
-            <th class="p-3">Player</th>
-            <th class="p-3 text-right">Kills</th>
-            <th class="p-3 text-right">Deaths</th>
-            <th class="p-3 text-right">K/D</th>
-            <th class="p-3 text-right">Victories</th>
-            <th class="p-3 text-right">Defeats</th>
-            <th class="p-3 text-right">Win %</th>
+            <th class="p-3 sortable" onclick="setSortMode('user')">Player <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
+            <th class="p-3 text-right sortable" onclick="setSortMode('kills')">Kills <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
+            <th class="p-3 text-right sortable" onclick="setSortMode('deaths')">Deaths <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
+            <th class="p-3 text-right sortable" onclick="setSortMode('kd')">K/D <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
+            <th class="p-3 text-right sortable" onclick="setSortMode('victories')">Victories <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
+            <th class="p-3 text-right sortable" onclick="setSortMode('defeats')">Defeats <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
+            <th class="p-3 text-right sortable" onclick="setSortMode('winRate')">Win % <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
             <th class="p-3 text-right">Suicides</th>
-            <th class="p-3 text-right">Level</th>
+            <th class="p-3 text-right sortable" onclick="setSortMode('level')">Level <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
           </tr>
         </thead>
         <tbody id="tableBody" class="divide-y divide-slate-800/60 font-mono">
@@ -110,6 +132,7 @@
 
   <script>
     let parsedResults = [];
+    let currentSort = "kills_desc";
 
     function clearList() {
       document.getElementById("accountsInput").value = "";
@@ -121,7 +144,6 @@
       return isNaN(n) ? 0 : n;
     };
 
-    // Official IronVault XP Thresholds
     function getLevelFromXP(rawXp) {
       const xp = cleanNum(rawXp);
       const thresholds = [
@@ -186,6 +208,163 @@
       return null;
     }
 
+    function changeSortMode(mode) {
+      currentSort = mode;
+      renderTable();
+    }
+
+    function setSortMode(field) {
+      if (field === 'kills') {
+        currentSort = (currentSort === 'kills_desc') ? 'kills_asc' : 'kills_desc';
+      } else if (field === 'kd') {
+        currentSort = 'kd_desc';
+      } else if (field === 'winRate') {
+        currentSort = 'winrate_desc';
+      } else if (field === 'level') {
+        currentSort = 'level_desc';
+      } else if (field === 'user') {
+        currentSort = 'original';
+      }
+      document.getElementById("sortSelect").value = currentSort;
+      renderTable();
+    }
+
+    function renderTable() {
+      if (!parsedResults.length) return;
+
+      // Clone array to sort for display without destroying original input indexes
+      let displayList = [...parsedResults];
+
+      displayList.sort((a, b) => {
+        // Not Found items stay at the bottom for numeric sorts
+        if (currentSort !== 'original') {
+          if (a.found && !b.found) return -1;
+          if (!a.found && b.found) return 1;
+        }
+
+        switch (currentSort) {
+          case 'kills_desc':
+            return b.kills - a.kills;
+          case 'kills_asc':
+            return a.kills - b.kills;
+          case 'kd_desc':
+            return parseFloat(b.kd) - parseFloat(a.kd);
+          case 'winrate_desc':
+            return parseFloat(b.winRate) - parseFloat(a.winRate);
+          case 'level_desc':
+            return b.level - a.level;
+          case 'original':
+          default:
+            return a.originalIndex - b.originalIndex;
+        }
+      });
+
+      const tableBody = document.getElementById("tableBody");
+      tableBody.innerHTML = "";
+
+      displayList.forEach((rowData, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = "table-row border-b border-slate-800/40";
+
+        if (rowData.found) {
+          tr.innerHTML = `
+            <td class="p-3 text-slate-500 font-sans">${idx + 1}</td>
+            <td class="p-3 font-semibold text-slate-200">${rowData.user}</td>
+            <td class="p-3 text-right text-red-400 font-bold">${rowData.kills.toLocaleString()}</td>
+            <td class="p-3 text-right text-slate-400">${rowData.deaths.toLocaleString()}</td>
+            <td class="p-3 text-right text-yellow-400 font-bold">${rowData.kd}</td>
+            <td class="p-3 text-right text-emerald-400">${rowData.victories.toLocaleString()}</td>
+            <td class="p-3 text-right text-rose-400">${rowData.defeats.toLocaleString()}</td>
+            <td class="p-3 text-right text-blue-400 font-bold">${rowData.winRate}</td>
+            <td class="p-3 text-right text-slate-400">${rowData.suicides.toLocaleString()}</td>
+            <td class="p-3 text-right text-slate-100 font-sans font-bold">Lvl ${rowData.level}</td>
+          `;
+        } else {
+          tr.innerHTML = `
+            <td class="p-3 text-slate-500 font-sans">${idx + 1}</td>
+            <td class="p-3 font-semibold text-slate-400 flex items-center gap-2">
+              <span>${rowData.user}</span>
+              <button onclick="retrySingleAccount('${rowData.user.replace(/'/g, "\\'")}')" title="Retry fetching this account" class="retry-btn text-slate-500 hover:text-red-400 text-xs p-1">
+                <i class="fa-solid fa-arrows-rotate"></i>
+              </button>
+            </td>
+            <td colspan="7" class="p-3 text-center text-xs text-rose-500 font-sans font-medium">
+              <span class="bg-rose-950/70 border border-rose-800/80 px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wide">Not Found</span>
+            </td>
+            <td class="p-3 text-right text-slate-600 font-sans">-</td>
+          `;
+        }
+
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function updateCards() {
+      let totals = { kills: 0, deaths: 0, victories: 0, defeats: 0, suicides: 0 };
+
+      parsedResults.forEach(r => {
+        if (r.found) {
+          totals.kills += r.kills;
+          totals.deaths += r.deaths;
+          totals.victories += r.victories;
+          totals.defeats += r.defeats;
+          totals.suicides += r.suicides;
+        }
+      });
+
+      document.getElementById("totalKills").innerText = totals.kills.toLocaleString();
+      document.getElementById("totalDeaths").innerText = totals.deaths.toLocaleString();
+      document.getElementById("totalVictories").innerText = totals.victories.toLocaleString();
+      document.getElementById("totalDefeats").innerText = totals.defeats.toLocaleString();
+      
+      const combinedGames = totals.victories + totals.defeats;
+      document.getElementById("overallWinRate").innerText = combinedGames > 0 ? ((totals.victories / combinedGames) * 100).toFixed(1) + "%" : "0.0%";
+      document.getElementById("overallKD").innerText = totals.deaths > 0 ? (totals.kills / totals.deaths).toFixed(2) : String(totals.kills);
+    }
+
+    async function retrySingleAccount(username) {
+      const statusText = document.getElementById("statusText");
+      statusText.innerText = `Retrying: ${username}...`;
+
+      const data = await fetchAccountRobust(username, (msg) => {
+        statusText.innerText = msg;
+      });
+
+      const index = parsedResults.findIndex(r => r.user === username);
+      if (index !== -1) {
+        if (data && (data.kills !== undefined || data.deaths !== undefined || data.victories !== undefined)) {
+          let updatedRow = {
+            originalIndex: parsedResults[index].originalIndex,
+            user: username,
+            found: true,
+            kills: cleanNum(data.kills),
+            deaths: cleanNum(data.deaths),
+            victories: cleanNum(data.victories),
+            suicides: cleanNum(data.suicides),
+            level: getLevelFromXP(data.xp),
+            kd: "0.00",
+            winRate: "0.0%"
+          };
+
+          updatedRow.defeats = Math.max(0, updatedRow.deaths - updatedRow.suicides);
+          if (updatedRow.defeats === 0 && updatedRow.deaths > 0) {
+            updatedRow.defeats = updatedRow.deaths;
+          }
+
+          updatedRow.kd = updatedRow.deaths > 0 ? (updatedRow.kills / updatedRow.deaths).toFixed(2) : String(updatedRow.kills);
+          const totalGames = updatedRow.victories + updatedRow.defeats;
+          updatedRow.winRate = totalGames > 0 ? ((updatedRow.victories / totalGames) * 100).toFixed(1) + "%" : "0.0%";
+
+          parsedResults[index] = updatedRow;
+          statusText.innerText = `Updated ${username} successfully!`;
+        } else {
+          statusText.innerText = `${username} still not found.`;
+        }
+        updateCards();
+        renderTable();
+      }
+    }
+
     async function startAggregation() {
       const lines = document.getElementById("accountsInput").value.split("\n")
         .map(x => x.trim())
@@ -196,13 +375,9 @@
       const fetchBtn = document.getElementById("fetchBtn");
       const statusText = document.getElementById("statusText");
       const progressBar = document.getElementById("progressBar");
-      const tableBody = document.getElementById("tableBody");
 
       fetchBtn.disabled = true;
       parsedResults = [];
-      tableBody.innerHTML = "";
-
-      let totals = { kills: 0, deaths: 0, victories: 0, defeats: 0, suicides: 0 };
 
       for (let i = 0; i < lines.length; i++) {
         const username = lines[i];
@@ -214,6 +389,7 @@
         });
 
         let rowData = {
+          originalIndex: i,
           user: username,
           found: false,
           kills: 0,
@@ -232,11 +408,8 @@
           rowData.deaths = cleanNum(data.deaths);
           rowData.victories = cleanNum(data.victories);
           rowData.suicides = cleanNum(data.suicides);
-          
-          // Direct extraction from data.xp
           rowData.level = getLevelFromXP(data.xp);
 
-          // Defeats calculation
           rowData.defeats = Math.max(0, rowData.deaths - rowData.suicides);
           if (rowData.defeats === 0 && rowData.deaths > 0) {
             rowData.defeats = rowData.deaths;
@@ -246,58 +419,13 @@
 
           const totalGames = rowData.victories + rowData.defeats;
           rowData.winRate = totalGames > 0 ? ((rowData.victories / totalGames) * 100).toFixed(1) + "%" : "0.0%";
-
-          totals.kills += rowData.kills;
-          totals.deaths += rowData.deaths;
-          totals.victories += rowData.victories;
-          totals.defeats += rowData.defeats;
-          totals.suicides += rowData.suicides;
         }
 
         parsedResults.push(rowData);
+        updateCards();
+        renderTable();
 
-        // Update real-time cumulative cards
-        document.getElementById("totalKills").innerText = totals.kills.toLocaleString();
-        document.getElementById("totalDeaths").innerText = totals.deaths.toLocaleString();
-        document.getElementById("totalVictories").innerText = totals.victories.toLocaleString();
-        document.getElementById("totalDefeats").innerText = totals.defeats.toLocaleString();
-        
-        const combinedGames = totals.victories + totals.defeats;
-        document.getElementById("overallWinRate").innerText = combinedGames > 0 ? ((totals.victories / combinedGames) * 100).toFixed(1) + "%" : "0.0%";
-        document.getElementById("overallKD").innerText = totals.deaths > 0 ? (totals.kills / totals.deaths).toFixed(2) : String(totals.kills);
-
-        // Render Table Row
-        const tr = document.createElement("tr");
-        tr.className = "table-row border-b border-slate-800/40";
-
-        if (rowData.found) {
-          tr.innerHTML = `
-            <td class="p-3 text-slate-500 font-sans">${i + 1}</td>
-            <td class="p-3 font-semibold text-slate-200">${rowData.user}</td>
-            <td class="p-3 text-right text-red-400 font-bold">${rowData.kills.toLocaleString()}</td>
-            <td class="p-3 text-right text-slate-400">${rowData.deaths.toLocaleString()}</td>
-            <td class="p-3 text-right text-yellow-400 font-bold">${rowData.kd}</td>
-            <td class="p-3 text-right text-emerald-400">${rowData.victories.toLocaleString()}</td>
-            <td class="p-3 text-right text-rose-400">${rowData.defeats.toLocaleString()}</td>
-            <td class="p-3 text-right text-blue-400 font-bold">${rowData.winRate}</td>
-            <td class="p-3 text-right text-slate-400">${rowData.suicides.toLocaleString()}</td>
-            <td class="p-3 text-right text-slate-100 font-sans font-bold">Lvl ${rowData.level}</td>
-          `;
-        } else {
-          tr.innerHTML = `
-            <td class="p-3 text-slate-500 font-sans">${i + 1}</td>
-            <td class="p-3 font-semibold text-slate-400">${rowData.user}</td>
-            <td colspan="7" class="p-3 text-center text-xs text-rose-500 font-sans font-medium">
-              <span class="bg-rose-950/70 border border-rose-800/80 px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wide">Not Found</span>
-            </td>
-            <td class="p-3 text-right text-slate-600 font-sans">-</td>
-          `;
-        }
-
-        tableBody.appendChild(tr);
-
-        // Base safe delay
-        await new Promise(r => setTimeout(r, 400));
+        await new Promise(r => setTimeout(r, 380));
       }
 
       statusText.innerText = "Completed all accounts!";
@@ -306,12 +434,12 @@
 
     function exportCSV() {
       if (!parsedResults.length) return alert("No parsed data to export.");
-      let csv = "User,Status,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,Level\n";
-      parsedResults.forEach(r => {
+      let csv = "Rank,User,Status,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,Level\n";
+      parsedResults.forEach((r, idx) => {
         if (r.found) {
-          csv += `"${r.user}","Found",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.level}\n`;
+          csv += `${idx + 1},"${r.user}","Found",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.level}\n`;
         } else {
-          csv += `"${r.user}","Not Found",0,0,0,0,0,0%,0,0\n`;
+          csv += `${idx + 1},"${r.user}","Not Found",0,0,0,0,0,0%,0,0\n`;
         }
       });
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
