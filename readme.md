@@ -15,6 +15,8 @@ This utility automates that process: simply paste a batch of usernames, and the 
 
 ---
 
+<img width="2794" height="1672" alt="image" src="https://github.com/user-attachments/assets/20c6948d-0030-49d9-ae0c-0d154d8ef74c" />
+
 ## 🚀 Key Features
 
 - **Bulk Alt Aggregation:** Analyze dozens of accounts in a single execution with real-time progress indicators.
