@@ -121,27 +121,20 @@
       return isNaN(n) ? 0 : n;
     };
 
-    // Official IronVault XP Level Thresholds
-    function calculateIronVaultLevel(kills, victories, deaths, rawExp) {
-      let exp = cleanNum(rawExp);
-      if (exp <= 0) {
-        // IronVault XP Calculation: Victories * 25 + Kills * 20 + Deaths * 3
-        exp = (victories * 25) + (kills * 20) + (deaths * 3);
-      }
-
-      const xpTiers = [
-        0, 500, 1200, 2200, 3600, 5500, 8000, 11500, 16000, 22000,
-        30000, 41000, 56000, 76000, 102000, 135000, 155000, 170000, 182000, 190000
+    // Official IronVault XP Thresholds
+    function getLevelFromXP(rawXp) {
+      const xp = cleanNum(rawXp);
+      const thresholds = [
+        0, 1000, 2500, 5000, 8500, 13000, 19000, 26500, 35500, 46000,
+        58000, 72000, 88000, 93700, 126000, 148000, 168000, 180000, 188000, 190000
       ];
-
-      for (let lvl = xpTiers.length; lvl >= 1; lvl--) {
-        if (exp >= xpTiers[lvl - 1]) return lvl;
+      for (let lvl = thresholds.length; lvl >= 1; lvl--) {
+        if (xp >= thresholds[lvl - 1]) return lvl;
       }
       return 1;
     }
 
-    // Direct API Caller with aggressive rate-limit handling
-    async function fetchFromIronVault(user) {
+    async function queryIronVault(user) {
       try {
         const res = await fetch("https://ironvault.vercel.app/api/getProfileByUsername", {
           method: "POST",
@@ -178,13 +171,13 @@
 
       for (let cand of candidates) {
         for (let attempt = 1; attempt <= 3; attempt++) {
-          const res = await fetchFromIronVault(cand);
+          const res = await queryIronVault(cand);
           if (res.ok && res.data) {
             return res.data;
           }
           if (res.retry) {
-            if (onStatus) onStatus(`Rate-limited on "${cand}", retrying in 2s...`);
-            await new Promise(r => setTimeout(r, 2000));
+            if (onStatus) onStatus(`Rate-limit on "${cand}", retrying in 1.5s...`);
+            await new Promise(r => setTimeout(r, 1500));
           } else {
             break;
           }
@@ -240,8 +233,10 @@
           rowData.victories = cleanNum(data.victories);
           rowData.suicides = cleanNum(data.suicides);
           
-          rowData.level = calculateIronVaultLevel(rowData.kills, rowData.victories, rowData.deaths, data.experience);
+          // Direct extraction from data.xp
+          rowData.level = getLevelFromXP(data.xp);
 
+          // Defeats calculation
           rowData.defeats = Math.max(0, rowData.deaths - rowData.suicides);
           if (rowData.defeats === 0 && rowData.deaths > 0) {
             rowData.defeats = rowData.deaths;
@@ -301,8 +296,8 @@
 
         tableBody.appendChild(tr);
 
-        // Cooldown between requests to stay under rate-limits
-        await new Promise(r => setTimeout(r, 450));
+        // Base safe delay
+        await new Promise(r => setTimeout(r, 400));
       }
 
       statusText.innerText = "Completed all accounts!";
