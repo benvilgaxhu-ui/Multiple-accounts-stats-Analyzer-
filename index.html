@@ -121,7 +121,6 @@
       return isNaN(n) ? 0 : n;
     };
 
-    // TankTrouble XP to Level Calculation (Level 1 to 20 max)
     function calculateLevel(xp) {
       if (!xp || xp <= 0) return 1;
       const thresholds = [
@@ -134,24 +133,67 @@
       return 1;
     }
 
-    async function fetchAccountProfile(username) {
+    // Direct single POST call
+    async function singleApiCall(user) {
       try {
         const response = await fetch("https://ironvault.vercel.app/api/getProfileByUsername", {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=UTF-8" },
-          body: username
+          body: user
         });
 
-        if (!response.ok) return null;
-        const resJson = await response.json();
-        if (resJson && resJson.result && resJson.data) {
-          return resJson.data;
+        if (!response.ok) return { ok: false, status: response.status, data: null };
+
+        const json = await response.json();
+        if (json && json.result && json.data) {
+          return { ok: true, status: 200, data: json.data };
         }
-        return null;
+        return { ok: false, status: 404, data: null };
       } catch (err) {
-        console.warn(`Direct fetch failed for ${username}`, err);
-        return null;
+        return { ok: false, status: 0, error: err };
       }
+    }
+
+    // Multi-Stage Retry with Fallback Casing & Spacing
+    async function fetchAccountWithRetry(rawUsername, onStatusUpdate) {
+      const u = rawUsername.trim();
+      if (!u) return null;
+
+      // Variants to attempt
+      const candidates = [u];
+      const spaced = u.replace(/([a-z])([A-Z])/g, '$1 $2');
+      if (spaced !== u) candidates.push(spaced);
+      const joined = u.replace(/\s+/g, '');
+      if (joined !== u) candidates.push(joined);
+
+      const maxAttempts = 3;
+
+      for (let cand of candidates) {
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          if (attempt > 1 && onStatusUpdate) {
+            onStatusUpdate(`Retry ${attempt}/${maxAttempts} for ${cand}...`);
+          }
+
+          const res = await singleApiCall(cand);
+
+          if (res.ok && res.data) {
+            return res.data;
+          }
+
+          // If explicit Not Found (404 / result: false), don't retry same variant unnecessarily
+          if (res.status === 404) {
+            break; 
+          }
+
+          // Rate-limited (429) or Network/Server 500 error: wait with backoff
+          if (attempt < maxAttempts) {
+            const backoff = attempt * 800; // 800ms, 1600ms
+            await new Promise(r => setTimeout(r, backoff));
+          }
+        }
+      }
+
+      return null;
     }
 
     async function startAggregation() {
@@ -177,21 +219,25 @@
         statusText.innerText = `Fetching (${i + 1}/${lines.length}): ${username}...`;
         progressBar.style.width = `${Math.round(((i + 1) / lines.length) * 100)}%`;
 
-        const data = await fetchAccountProfile(username);
+        const data = await fetchAccountWithRetry(username, (msg) => {
+          statusText.innerText = `(${i + 1}/${lines.length}) ${msg}`;
+        });
 
         let rowData = {
           user: username,
+          found: false,
           kills: 0,
           deaths: 0,
           victories: 0,
           defeats: 0,
           suicides: 0,
-          level: 1,
+          level: 0,
           kd: "0.00",
           winRate: "0.0%"
         };
 
-        if (data) {
+        if (data && (data.kills !== undefined || data.deaths !== undefined || data.victories !== undefined)) {
+          rowData.found = true;
           rowData.kills = cleanNum(data.kills);
           rowData.deaths = cleanNum(data.deaths);
           rowData.victories = cleanNum(data.victories);
@@ -200,19 +246,17 @@
           const rawXP = cleanNum(data.experience ?? data.xp);
           rowData.level = calculateLevel(rawXP);
 
-          // Defeats Calculation
           rowData.defeats = Math.max(0, rowData.deaths - rowData.suicides);
           if (rowData.defeats === 0 && rowData.deaths > 0) {
             rowData.defeats = rowData.deaths;
           }
 
-          // K/D Ratio
           rowData.kd = rowData.deaths > 0 ? (rowData.kills / rowData.deaths).toFixed(2) : String(rowData.kills);
 
-          // Win Rate %
           const totalGames = rowData.victories + rowData.defeats;
           rowData.winRate = totalGames > 0 ? ((rowData.victories / totalGames) * 100).toFixed(1) + "%" : "0.0%";
 
+          // Add to running totals only when successfully found
           totals.kills += rowData.kills;
           totals.deaths += rowData.deaths;
           totals.victories += rowData.victories;
@@ -232,24 +276,39 @@
         document.getElementById("overallWinRate").innerText = combinedGames > 0 ? ((totals.victories / combinedGames) * 100).toFixed(1) + "%" : "0.0%";
         document.getElementById("overallKD").innerText = totals.deaths > 0 ? (totals.kills / totals.deaths).toFixed(2) : String(totals.kills);
 
-        // Append to UI table with Level displayed
+        // Render Table Row
         const tr = document.createElement("tr");
         tr.className = "table-row border-b border-slate-800/40";
-        tr.innerHTML = `
-          <td class="p-3 text-slate-500 font-sans">${i + 1}</td>
-          <td class="p-3 font-semibold text-slate-200">${rowData.user}</td>
-          <td class="p-3 text-right text-red-400 font-bold">${rowData.kills.toLocaleString()}</td>
-          <td class="p-3 text-right text-slate-400">${rowData.deaths.toLocaleString()}</td>
-          <td class="p-3 text-right text-yellow-400 font-bold">${rowData.kd}</td>
-          <td class="p-3 text-right text-emerald-400">${rowData.victories.toLocaleString()}</td>
-          <td class="p-3 text-right text-rose-400">${rowData.defeats.toLocaleString()}</td>
-          <td class="p-3 text-right text-blue-400 font-bold">${rowData.winRate}</td>
-          <td class="p-3 text-right text-slate-400">${rowData.suicides.toLocaleString()}</td>
-          <td class="p-3 text-right text-slate-100 font-sans font-bold">Lvl ${rowData.level}</td>
-        `;
+
+        if (rowData.found) {
+          tr.innerHTML = `
+            <td class="p-3 text-slate-500 font-sans">${i + 1}</td>
+            <td class="p-3 font-semibold text-slate-200">${rowData.user}</td>
+            <td class="p-3 text-right text-red-400 font-bold">${rowData.kills.toLocaleString()}</td>
+            <td class="p-3 text-right text-slate-400">${rowData.deaths.toLocaleString()}</td>
+            <td class="p-3 text-right text-yellow-400 font-bold">${rowData.kd}</td>
+            <td class="p-3 text-right text-emerald-400">${rowData.victories.toLocaleString()}</td>
+            <td class="p-3 text-right text-rose-400">${rowData.defeats.toLocaleString()}</td>
+            <td class="p-3 text-right text-blue-400 font-bold">${rowData.winRate}</td>
+            <td class="p-3 text-right text-slate-400">${rowData.suicides.toLocaleString()}</td>
+            <td class="p-3 text-right text-slate-100 font-sans font-bold">Lvl ${rowData.level}</td>
+          `;
+        } else {
+          // Explicit "Not Found" state
+          tr.innerHTML = `
+            <td class="p-3 text-slate-500 font-sans">${i + 1}</td>
+            <td class="p-3 font-semibold text-slate-400">${rowData.user}</td>
+            <td colspan="7" class="p-3 text-center text-xs text-rose-500 font-sans font-medium">
+              <span class="bg-rose-950/70 border border-rose-800/80 px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wide">Not Found</span>
+            </td>
+            <td class="p-3 text-right text-slate-600 font-sans">-</td>
+          `;
+        }
+
         tableBody.appendChild(tr);
 
-        await new Promise(r => setTimeout(r, 120));
+        // Base throttle delay
+        await new Promise(r => setTimeout(r, 200));
       }
 
       statusText.innerText = "Completed all accounts!";
@@ -258,9 +317,13 @@
 
     function exportCSV() {
       if (!parsedResults.length) return alert("No parsed data to export.");
-      let csv = "User,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,Level\n";
+      let csv = "User,Status,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,Level\n";
       parsedResults.forEach(r => {
-        csv += `"${r.user}",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.level}\n`;
+        if (r.found) {
+          csv += `"${r.user}","Found",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.level}\n`;
+        } else {
+          csv += `"${r.user}","Not Found",0,0,0,0,0,0%,0,0\n`;
+        }
       });
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const a = document.createElement("a");
