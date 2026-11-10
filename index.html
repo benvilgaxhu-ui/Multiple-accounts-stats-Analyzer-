@@ -201,48 +201,109 @@
     }
 
     // Direct TankTrouble Official JSON-RPC Engine
-    async function queryTankTroubleRPC(username) {
-      try {
-        const res = await fetch("https://tanktrouble.com/ajax/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jsonrpc: "2.0",
-            method: "tanktrouble.getPlayerDetails",
-            id: 1,
-            params: [username]
-          }),
-          signal: AbortSignal.timeout(3500)
-        });
+    // 1. Direct TankTrouble JSON-RPC via CORS Proxy Wrapper
+async function queryTankTroubleRPC(username) {
+  const rpcPayload = {
+    jsonrpc: "2.0",
+    method: "tanktrouble.getPlayerDetails",
+    id: 1,
+    params: [username]
+  };
 
-        if (res.ok) {
-          const json = await res.json();
-          if (json && json.result && json.result.data) {
-            return json.result.data;
-          }
+  // List of public CORS bridges that forward POST requests
+  const proxyEndpoints = [
+    {
+      url: "https://corsproxy.io/?url=" + encodeURIComponent("https://tanktrouble.com/ajax/"),
+      headers: { "Content-Type": "application/json" }
+    },
+    {
+      url: "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://tanktrouble.com/ajax/"),
+      headers: { "Content-Type": "application/json" }
+    }
+  ];
+
+  // Try direct first (works inside extension/userscript environments)
+  try {
+    const directRes = await fetch("https://tanktrouble.com/ajax/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(rpcPayload),
+      signal: AbortSignal.timeout(2200)
+    });
+    if (directRes.ok) {
+      const json = await directRes.json();
+      if (json && json.result && json.result.data) return json.result.data;
+    }
+  } catch (e) {
+    // Direct blocked by browser CORS, continue to proxies
+  }
+
+  // Try CORS bridge wrappers
+  for (let proxy of proxyEndpoints) {
+    try {
+      const res = await fetch(proxy.url, {
+        method: "POST",
+        headers: proxy.headers,
+        body: JSON.stringify(rpcPayload),
+        signal: AbortSignal.timeout(3500)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.result && json.result.data) {
+          return json.result.data;
         }
-      } catch (err) {}
-      return null;
-    }
-
-    // Robust Fetcher with name format handling
-    async function fetchAccountDirect(rawUsername, onStatus) {
-      const u = rawUsername.trim();
-      if (!u) return null;
-
-      const candidates = [u];
-      if (u.includes("_")) candidates.push(u.replace(/_/g, " "));
-      const spaced = u.replace(/([a-z])([A-Z])/g, '$1 $2');
-      if (spaced !== u) candidates.push(spaced);
-      const joined = u.replace(/\s+/g, '');
-      if (joined !== u) candidates.push(joined);
-
-      for (let cand of candidates) {
-        let data = await queryTankTroubleRPC(cand);
-        if (data) return data;
       }
-      return null;
+    } catch (err) {
+      // Continue to next bridge
     }
+  }
+
+  return null;
+}
+
+// 2. IronVault Silent Fallback (Guaranteed to bypass CORS on GitHub Pages)
+async function queryIronVaultFallback(username) {
+  try {
+    const res = await fetch("https://ironvault.vercel.app/api/getProfileByUsername", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: username,
+      signal: AbortSignal.timeout(3500)
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.result && json.data) {
+        return json.data;
+      }
+    }
+  } catch (err) {}
+  return null;
+}
+
+// 3. Combined Dual-Engine Fetcher
+async function fetchAccountDirect(rawUsername, onStatus) {
+  const u = rawUsername.trim();
+  if (!u) return null;
+
+  const candidates = [u];
+  if (u.includes("_")) candidates.push(u.replace(/_/g, " "));
+  const spaced = u.replace(/([a-z])([A-Z])/g, '$1 $2');
+  if (spaced !== u) candidates.push(spaced);
+  const joined = u.replace(/\s+/g, '');
+  if (joined !== u) candidates.push(joined);
+
+  for (let cand of candidates) {
+    // Step 1: TankTrouble Native RPC
+    let data = await queryTankTroubleRPC(cand);
+    if (data) return data;
+
+    // Step 2: Fallback Engine
+    data = await queryIronVaultFallback(cand);
+    if (data) return data;
+  }
+  return null;
+}
 
     // Dropdown change handler
     function applyDropdownSort(mode) {
