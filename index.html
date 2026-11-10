@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IronVault Aggregator | Made by Invincible</title>
+  <title>Multiple Account Stats Analyzer | Made by Invincible</title>
 
-  <!-- Custom Tank Favicon SVG for Browser Tab -->
+  <!-- Custom Tank Favicon SVG -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121824'/%3E%3Crect x='8' y='14' width='12' height='36' rx='4' fill='%23334155' stroke='%23475569' stroke-width='2'/%3E%3Crect x='44' y='14' width='12' height='36' rx='4' fill='%23334155' stroke='%23475569' stroke-width='2'/%3E%3Crect x='16' y='18' width='32' height='28' rx='5' fill='%23dc2626' stroke='%23ef4444' stroke-width='2'/%3E%3Crect x='29' y='6' width='6' height='16' rx='2' fill='%23f87171'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%23991b1b' stroke='%23fca5a5' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%23ffffff'/%3E%3C/svg%3E" />
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -16,8 +16,8 @@
     .table-row:hover { background-color: #1a2234; }
     .retry-btn:hover { color: #f43f5e; transform: rotate(45deg); }
     .retry-btn { transition: all 0.2s ease; }
-    th.sortable { cursor: pointer; user-select: none; }
-    th.sortable:hover { color: #f8fafc; }
+    th.sortable { cursor: pointer; user-select: none; transition: color 0.15s ease; }
+    th.sortable:hover { color: #f87171; }
   </style>
 </head>
 <body class="p-4 md:p-8 max-w-7xl mx-auto flex flex-col min-h-screen">
@@ -25,19 +25,18 @@
   <!-- Header -->
   <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
     <div class="flex items-center gap-3">
-      <!-- Mini Tank Brand Logo -->
       <div class="relative bg-gradient-to-br from-red-600 to-red-800 p-2.5 rounded-xl shadow-lg shadow-red-950/40 border border-red-500/30 flex items-center justify-center">
         <i class="fa-solid fa-shield-halved text-white text-xl"></i>
       </div>
       <div>
         <div class="flex items-center gap-2">
-          <h1 class="text-xl md:text-2xl font-bold text-white tracking-tight">IronVault</h1>
-          <span class="text-[11px] bg-red-950/80 text-red-400 border border-red-800/80 px-2 py-0.5 rounded font-mono font-semibold">Aggregator</span>
+          <h1 class="text-xl md:text-2xl font-bold text-white tracking-tight">Multiple Account</h1>
+          <span class="text-[11px] bg-red-950/80 text-red-400 border border-red-800/80 px-2 py-0.5 rounded font-mono font-semibold">Stats Analyzer</span>
           <span class="text-[11px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded font-sans flex items-center gap-1.5">
             <i class="fa-solid fa-code text-red-400 text-[10px]"></i> Made by <strong class="text-white font-semibold">Invincible</strong>
           </span>
         </div>
-        <p class="text-xs text-slate-400 mt-0.5">Real-time statistics calculation & alt aggregation for TankTrouble</p>
+        <p class="text-xs text-slate-400 mt-0.5">Direct statistics calculation & multi-account aggregation for TankTrouble</p>
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -62,7 +61,6 @@
       <div id="statusText" class="text-xs text-slate-400">Ready</div>
     </div>
 
-    <!-- Progress Bar -->
     <div class="w-full bg-slate-900 h-1.5 rounded-full mt-3 overflow-hidden">
       <div id="progressBar" class="bg-red-600 h-full w-0 transition-all duration-200"></div>
     </div>
@@ -103,13 +101,17 @@
     </div>
     <div class="flex items-center gap-2">
       <label class="text-xs text-slate-400">Order by:</label>
-      <select id="sortSelect" onchange="changeSortMode(this.value)" class="bg-[#121824] border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-red-500">
+      <select id="sortSelect" onchange="applyDropdownSort(this.value)" class="bg-[#121824] border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-red-500 cursor-pointer">
         <option value="original">Original Order (As Entered)</option>
-        <option value="kills_desc" selected>Kills: High → Low (Descending)</option>
-        <option value="kills_asc">Kills: Low → High (Ascending)</option>
+        <option value="kills_desc" selected>Kills: High → Low</option>
+        <option value="kills_asc">Kills: Low → High</option>
+        <option value="deaths_desc">Deaths: High → Low</option>
         <option value="kd_desc">K/D: High → Low</option>
+        <option value="kd_asc">K/D: Low → High</option>
+        <option value="victories_desc">Wins: High → Low</option>
         <option value="winrate_desc">Win Rate: High → Low</option>
         <option value="level_desc">Level: High → Low</option>
+        <option value="user_asc">Name: A → Z</option>
       </select>
     </div>
   </div>
@@ -121,15 +123,33 @@
         <thead class="bg-[#161e2e] text-slate-400 uppercase text-[10px] border-b border-slate-800">
           <tr>
             <th class="p-3">#</th>
-            <th class="p-3 sortable" onclick="setSortMode('user')">Player <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
-            <th class="p-3 text-right sortable" onclick="setSortMode('kills')">Kills <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
-            <th class="p-3 text-right sortable" onclick="setSortMode('deaths')">Deaths <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
-            <th class="p-3 text-right sortable" onclick="setSortMode('kd')">K/D <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
-            <th class="p-3 text-right sortable" onclick="setSortMode('victories')">Victories <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
-            <th class="p-3 text-right sortable" onclick="setSortMode('defeats')">Defeats <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
-            <th class="p-3 text-right sortable" onclick="setSortMode('winRate')">Win % <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
-            <th class="p-3 text-right">Suicides</th>
-            <th class="p-3 text-right sortable" onclick="setSortMode('level')">Level <i class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i></th>
+            <th class="p-3 sortable" onclick="toggleColumnSort('user')">
+              Player <i id="icon_user" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+            </th>
+            <th class="p-3 text-right sortable" onclick="toggleColumnSort('kills')">
+              Kills <i id="icon_kills" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+            </th>
+            <th class="p-3 text-right sortable" onclick="toggleColumnSort('deaths')">
+              Deaths <i id="icon_deaths" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+            </th>
+            <th class="p-3 text-right sortable" onclick="toggleColumnSort('kd')">
+              K/D <i id="icon_kd" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+            </th>
+            <th class="p-3 text-right sortable" onclick="toggleColumnSort('victories')">
+              Victories <i id="icon_victories" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+            </th>
+            <th class="p-3 text-right sortable" onclick="toggleColumnSort('defeats')">
+              Defeats <i id="icon_defeats" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+            </th>
+            <th class="p-3 text-right sortable" onclick="toggleColumnSort('winRate')">
+              Win % <i id="icon_winRate" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+            </th>
+            <th class="p-3 text-right sortable" onclick="toggleColumnSort('suicides')">
+              Suicides <i id="icon_suicides" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+            </th>
+            <th class="p-3 text-right sortable" onclick="toggleColumnSort('level')">
+              Level <i id="icon_level" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+            </th>
           </tr>
         </thead>
         <tbody id="tableBody" class="divide-y divide-slate-800/60 font-mono">
@@ -145,16 +165,18 @@
   <footer class="mt-auto py-4 border-t border-slate-800/60 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
     <div class="flex items-center gap-2">
       <i class="fa-solid fa-shield-halved text-red-500"></i>
-      <span>TankTrouble Stats Aggregator</span>
+      <span>Multiple Account Stats Analyzer</span>
     </div>
     <div>
-      Engineered & Designed by <span class="text-slate-300 font-semibold hover:text-red-400 transition cursor-default">Invincible</span>
+      Engineered by <span class="text-slate-300 font-semibold hover:text-red-400 transition cursor-default">Invincible</span>
     </div>
   </footer>
 
   <script>
     let parsedResults = [];
-    let currentSort = "kills_desc";
+    let sortColumn = "kills";
+    let sortDirection = "desc";
+    let isOriginalOrder = false;
 
     function clearList() {
       document.getElementById("accountsInput").value = "";
@@ -178,31 +200,33 @@
       return 1;
     }
 
-    async function queryIronVault(user) {
+    // Direct TankTrouble Official JSON-RPC Engine
+    async function queryTankTroubleRPC(username) {
       try {
-        const res = await fetch("https://ironvault.vercel.app/api/getProfileByUsername", {
+        const res = await fetch("https://tanktrouble.com/ajax/", {
           method: "POST",
-          headers: { "Content-Type": "text/plain;charset=UTF-8" },
-          body: user
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "tanktrouble.getPlayerDetails",
+            id: 1,
+            params: [username]
+          }),
+          signal: AbortSignal.timeout(3500)
         });
-
-        if (res.status === 429 || res.status === 500) {
-          return { retry: true };
-        }
 
         if (res.ok) {
           const json = await res.json();
-          if (json && json.result && json.data) {
-            return { ok: true, data: json.data };
+          if (json && json.result && json.result.data) {
+            return json.result.data;
           }
         }
-      } catch (err) {
-        return { retry: true };
-      }
-      return { ok: false, data: null };
+      } catch (err) {}
+      return null;
     }
 
-    async function fetchAccountRobust(rawUsername, onStatus) {
+    // Robust Fetcher with name format handling
+    async function fetchAccountDirect(rawUsername, onStatus) {
       const u = rawUsername.trim();
       if (!u) return null;
 
@@ -214,41 +238,59 @@
       if (joined !== u) candidates.push(joined);
 
       for (let cand of candidates) {
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          const res = await queryIronVault(cand);
-          if (res.ok && res.data) {
-            return res.data;
-          }
-          if (res.retry) {
-            if (onStatus) onStatus(`Rate-limit on "${cand}", retrying in 1.5s...`);
-            await new Promise(r => setTimeout(r, 1500));
-          } else {
-            break;
-          }
-        }
+        let data = await queryTankTroubleRPC(cand);
+        if (data) return data;
       }
       return null;
     }
 
-    function changeSortMode(mode) {
-      currentSort = mode;
+    // Dropdown change handler
+    function applyDropdownSort(mode) {
+      if (mode === "original") {
+        isOriginalOrder = true;
+      } else {
+        isOriginalOrder = false;
+        const [col, dir] = mode.split("_");
+        sortColumn = col;
+        sortDirection = dir;
+      }
+      updateSortIcons();
       renderTable();
     }
 
-    function setSortMode(field) {
-      if (field === 'kills') {
-        currentSort = (currentSort === 'kills_desc') ? 'kills_asc' : 'kills_desc';
-      } else if (field === 'kd') {
-        currentSort = 'kd_desc';
-      } else if (field === 'winRate') {
-        currentSort = 'winrate_desc';
-      } else if (field === 'level') {
-        currentSort = 'level_desc';
-      } else if (field === 'user') {
-        currentSort = 'original';
+    // Header click handler (Toggles Asc/Desc)
+    function toggleColumnSort(col) {
+      isOriginalOrder = false;
+      if (sortColumn === col) {
+        sortDirection = (sortDirection === "desc") ? "asc" : "desc";
+      } else {
+        sortColumn = col;
+        sortDirection = (col === "user") ? "asc" : "desc";
       }
-      document.getElementById("sortSelect").value = currentSort;
+
+      const matchKey = `${sortColumn}_${sortDirection}`;
+      const sortSelect = document.getElementById("sortSelect");
+      if (sortSelect.querySelector(`option[value="${matchKey}"]`)) {
+        sortSelect.value = matchKey;
+      } else {
+        sortSelect.value = "original";
+      }
+
+      updateSortIcons();
       renderTable();
+    }
+
+    function updateSortIcons() {
+      const columns = ['user', 'kills', 'deaths', 'kd', 'victories', 'defeats', 'winRate', 'suicides', 'level'];
+      columns.forEach(c => {
+        const icon = document.getElementById(`icon_${c}`);
+        if (!icon) return;
+        if (!isOriginalOrder && sortColumn === c) {
+          icon.className = `fa-solid ${sortDirection === 'desc' ? 'fa-arrow-down-wide-short' : 'fa-arrow-up-wide-short'} text-[10px] text-red-400 ml-1`;
+        } else {
+          icon.className = "fa-solid fa-sort text-[9px] opacity-30 ml-1";
+        }
+      });
     }
 
     function renderTable() {
@@ -257,25 +299,30 @@
       let displayList = [...parsedResults];
 
       displayList.sort((a, b) => {
-        if (currentSort !== 'original') {
+        if (!isOriginalOrder) {
           if (a.found && !b.found) return -1;
           if (!a.found && b.found) return 1;
-        }
 
-        switch (currentSort) {
-          case 'kills_desc':
-            return b.kills - a.kills;
-          case 'kills_asc':
-            return a.kills - b.kills;
-          case 'kd_desc':
-            return parseFloat(b.kd) - parseFloat(a.kd);
-          case 'winrate_desc':
-            return parseFloat(b.winRate) - parseFloat(a.winRate);
-          case 'level_desc':
-            return b.level - a.level;
-          case 'original':
-          default:
-            return a.originalIndex - b.originalIndex;
+          let valA = a[sortColumn];
+          let valB = b[sortColumn];
+
+          if (sortColumn === 'user') {
+            return sortDirection === 'asc' 
+              ? String(valA).localeCompare(String(valB)) 
+              : String(valB).localeCompare(String(valA));
+          }
+
+          if (sortColumn === 'kd' || sortColumn === 'winRate') {
+            valA = parseFloat(valA) || 0;
+            valB = parseFloat(valB) || 0;
+          } else {
+            valA = cleanNum(valA);
+            valB = cleanNum(valB);
+          }
+
+          return sortDirection === 'desc' ? (valB - valA) : (valA - valB);
+        } else {
+          return a.originalIndex - b.originalIndex;
         }
       });
 
@@ -346,7 +393,7 @@
       const statusText = document.getElementById("statusText");
       statusText.innerText = `Retrying: ${username}...`;
 
-      const data = await fetchAccountRobust(username, (msg) => {
+      const data = await fetchAccountDirect(username, (msg) => {
         statusText.innerText = msg;
       });
 
@@ -376,7 +423,7 @@
           updatedRow.winRate = totalGames > 0 ? ((updatedRow.victories / totalGames) * 100).toFixed(1) + "%" : "0.0%";
 
           parsedResults[index] = updatedRow;
-          statusText.innerText = `Updated ${username} successfully!`;
+          statusText.innerText = `Updated ${username}!`;
         } else {
           statusText.innerText = `${username} still not found.`;
         }
@@ -401,10 +448,10 @@
 
       for (let i = 0; i < lines.length; i++) {
         const username = lines[i];
-        statusText.innerText = `Fetching (${i + 1}/${lines.length}): ${username}...`;
+        statusText.innerText = `Querying (${i + 1}/${lines.length}): ${username}...`;
         progressBar.style.width = `${Math.round(((i + 1) / lines.length) * 100)}%`;
 
-        const data = await fetchAccountRobust(username, (msg) => {
+        const data = await fetchAccountDirect(username, (msg) => {
           statusText.innerText = `(${i + 1}/${lines.length}) ${msg}`;
         });
 
@@ -445,11 +492,12 @@
         updateCards();
         renderTable();
 
-        await new Promise(r => setTimeout(r, 380));
+        await new Promise(r => setTimeout(r, 200));
       }
 
       statusText.innerText = "Completed all accounts!";
       fetchBtn.disabled = false;
+      updateSortIcons();
     }
 
     function exportCSV() {
@@ -465,7 +513,7 @@
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "tanktrouble_accounts_summary.csv";
+      a.download = "multiple_accounts_stats_summary.csv";
       a.click();
     }
   </script>
