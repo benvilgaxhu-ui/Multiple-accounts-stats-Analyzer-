@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IronVault Multi-Account Stats Aggregator</title>
+  <title>IronVault Aggregator | Made by Invincible</title>
+
+  <!-- Custom Tank Favicon SVG for Browser Tab -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121824'/%3E%3Crect x='8' y='14' width='12' height='36' rx='4' fill='%23334155' stroke='%23475569' stroke-width='2'/%3E%3Crect x='44' y='14' width='12' height='36' rx='4' fill='%23334155' stroke='%23475569' stroke-width='2'/%3E%3Crect x='16' y='18' width='32' height='28' rx='5' fill='%23dc2626' stroke='%23ef4444' stroke-width='2'/%3E%3Crect x='29' y='6' width='6' height='16' rx='2' fill='%23f87171'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%23991b1b' stroke='%23fca5a5' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%23ffffff'/%3E%3C/svg%3E" />
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
@@ -16,17 +20,24 @@
     th.sortable:hover { color: #f8fafc; }
   </style>
 </head>
-<body class="p-4 md:p-8 max-w-7xl mx-auto">
+<body class="p-4 md:p-8 max-w-7xl mx-auto flex flex-col min-h-screen">
 
   <!-- Header -->
   <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
     <div class="flex items-center gap-3">
-      <div class="bg-red-600 text-white font-extrabold px-3 py-2 rounded-lg text-xl tracking-wider">IV</div>
+      <!-- Mini Tank Brand Logo -->
+      <div class="relative bg-gradient-to-br from-red-600 to-red-800 p-2.5 rounded-xl shadow-lg shadow-red-950/40 border border-red-500/30 flex items-center justify-center">
+        <i class="fa-solid fa-shield-halved text-white text-xl"></i>
+      </div>
       <div>
-        <h1 class="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-          IronVault <span class="text-xs bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded font-mono">Aggregator</span>
-        </h1>
-        <p class="text-xs text-slate-400">Calculate total statistics across multiple player accounts</p>
+        <div class="flex items-center gap-2">
+          <h1 class="text-xl md:text-2xl font-bold text-white tracking-tight">IronVault</h1>
+          <span class="text-[11px] bg-red-950/80 text-red-400 border border-red-800/80 px-2 py-0.5 rounded font-mono font-semibold">Aggregator</span>
+          <span class="text-[11px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded font-sans flex items-center gap-1.5">
+            <i class="fa-solid fa-code text-red-400 text-[10px]"></i> Made by <strong class="text-white font-semibold">Invincible</strong>
+          </span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">Real-time statistics calculation & alt aggregation for TankTrouble</p>
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -85,7 +96,7 @@
     </div>
   </div>
 
-  <!-- Table Header Controls (Sorting Selector) -->
+  <!-- Table Controls (Sorting Selector) -->
   <div class="flex items-center justify-between mb-3 px-1">
     <div class="text-xs font-semibold text-slate-400 flex items-center gap-2">
       <i class="fa-solid fa-list-ol text-slate-500"></i> Player Breakdowns
@@ -104,7 +115,7 @@
   </div>
 
   <!-- Detailed Table -->
-  <div class="card rounded-xl overflow-hidden">
+  <div class="card rounded-xl overflow-hidden flex-grow mb-8">
     <div class="overflow-x-auto">
       <table class="w-full text-left text-xs text-slate-300">
         <thead class="bg-[#161e2e] text-slate-400 uppercase text-[10px] border-b border-slate-800">
@@ -129,6 +140,17 @@
       </table>
     </div>
   </div>
+
+  <!-- Footer -->
+  <footer class="mt-auto py-4 border-t border-slate-800/60 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+    <div class="flex items-center gap-2">
+      <i class="fa-solid fa-shield-halved text-red-500"></i>
+      <span>TankTrouble Stats Aggregator</span>
+    </div>
+    <div>
+      Engineered & Designed by <span class="text-slate-300 font-semibold hover:text-red-400 transition cursor-default">Invincible</span>
+    </div>
+  </footer>
 
   <script>
     let parsedResults = [];
@@ -232,11 +254,9 @@
     function renderTable() {
       if (!parsedResults.length) return;
 
-      // Clone array to sort for display without destroying original input indexes
       let displayList = [...parsedResults];
 
       displayList.sort((a, b) => {
-        // Not Found items stay at the bottom for numeric sorts
         if (currentSort !== 'original') {
           if (a.found && !b.found) return -1;
           if (!a.found && b.found) return 1;
