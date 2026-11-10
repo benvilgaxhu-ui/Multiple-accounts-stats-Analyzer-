@@ -96,7 +96,7 @@
             <th class="p-3 text-right">Defeats</th>
             <th class="p-3 text-right">Win %</th>
             <th class="p-3 text-right">Suicides</th>
-            <th class="p-3 text-right">XP</th>
+            <th class="p-3 text-right">Level</th>
           </tr>
         </thead>
         <tbody id="tableBody" class="divide-y divide-slate-800/60 font-mono">
@@ -120,6 +120,19 @@
       const n = parseInt(String(val).replace(/[^\d]/g, ""), 10);
       return isNaN(n) ? 0 : n;
     };
+
+    // TankTrouble XP to Level Calculation (Level 1 to 20 max)
+    function calculateLevel(xp) {
+      if (!xp || xp <= 0) return 1;
+      const thresholds = [
+        0, 1000, 3000, 6000, 10000, 15000, 21000, 28000, 36000, 45000,
+        55000, 66000, 78000, 91000, 105000, 120000, 136000, 153000, 171000, 190000
+      ];
+      for (let lvl = thresholds.length; lvl >= 1; lvl--) {
+        if (xp >= thresholds[lvl - 1]) return lvl;
+      }
+      return 1;
+    }
 
     async function fetchAccountProfile(username) {
       try {
@@ -157,7 +170,7 @@
       parsedResults = [];
       tableBody.innerHTML = "";
 
-      let totals = { kills: 0, deaths: 0, victories: 0, defeats: 0, suicides: 0, xp: 0 };
+      let totals = { kills: 0, deaths: 0, victories: 0, defeats: 0, suicides: 0 };
 
       for (let i = 0; i < lines.length; i++) {
         const username = lines[i];
@@ -173,29 +186,30 @@
           victories: 0,
           defeats: 0,
           suicides: 0,
-          xp: 0,
+          level: 1,
           kd: "0.00",
           winRate: "0.0%"
         };
 
         if (data) {
-          // Exact TankTrouble JSON Keys
           rowData.kills = cleanNum(data.kills);
           rowData.deaths = cleanNum(data.deaths);
           rowData.victories = cleanNum(data.victories);
           rowData.suicides = cleanNum(data.suicides);
-          rowData.xp = cleanNum(data.experience ?? data.xp);
+          
+          const rawXP = cleanNum(data.experience ?? data.xp);
+          rowData.level = calculateLevel(rawXP);
 
-          // IronVault Defeats Calculation: Total Deaths minus Suicides (or total deaths)
+          // Defeats Calculation
           rowData.defeats = Math.max(0, rowData.deaths - rowData.suicides);
           if (rowData.defeats === 0 && rowData.deaths > 0) {
             rowData.defeats = rowData.deaths;
           }
 
-          // K/D Calculation
+          // K/D Ratio
           rowData.kd = rowData.deaths > 0 ? (rowData.kills / rowData.deaths).toFixed(2) : String(rowData.kills);
 
-          // Realistic Win Rate Calculation
+          // Win Rate %
           const totalGames = rowData.victories + rowData.defeats;
           rowData.winRate = totalGames > 0 ? ((rowData.victories / totalGames) * 100).toFixed(1) + "%" : "0.0%";
 
@@ -204,12 +218,11 @@
           totals.victories += rowData.victories;
           totals.defeats += rowData.defeats;
           totals.suicides += rowData.suicides;
-          totals.xp += rowData.xp;
         }
 
         parsedResults.push(rowData);
 
-        // Update real-time cumulative totals
+        // Update real-time cumulative cards
         document.getElementById("totalKills").innerText = totals.kills.toLocaleString();
         document.getElementById("totalDeaths").innerText = totals.deaths.toLocaleString();
         document.getElementById("totalVictories").innerText = totals.victories.toLocaleString();
@@ -219,7 +232,7 @@
         document.getElementById("overallWinRate").innerText = combinedGames > 0 ? ((totals.victories / combinedGames) * 100).toFixed(1) + "%" : "0.0%";
         document.getElementById("overallKD").innerText = totals.deaths > 0 ? (totals.kills / totals.deaths).toFixed(2) : String(totals.kills);
 
-        // Append to UI table
+        // Append to UI table with Level displayed
         const tr = document.createElement("tr");
         tr.className = "table-row border-b border-slate-800/40";
         tr.innerHTML = `
@@ -232,7 +245,7 @@
           <td class="p-3 text-right text-rose-400">${rowData.defeats.toLocaleString()}</td>
           <td class="p-3 text-right text-blue-400 font-bold">${rowData.winRate}</td>
           <td class="p-3 text-right text-slate-400">${rowData.suicides.toLocaleString()}</td>
-          <td class="p-3 text-right text-slate-200 font-sans">${rowData.xp.toLocaleString()}</td>
+          <td class="p-3 text-right text-slate-100 font-sans font-bold">Lvl ${rowData.level}</td>
         `;
         tableBody.appendChild(tr);
 
@@ -245,9 +258,9 @@
 
     function exportCSV() {
       if (!parsedResults.length) return alert("No parsed data to export.");
-      let csv = "User,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,XP\n";
+      let csv = "User,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,Level\n";
       parsedResults.forEach(r => {
-        csv += `"${r.user}",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.xp}\n`;
+        csv += `"${r.user}",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.level}\n`;
       });
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const a = document.createElement("a");
