@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IronVault Multi-Account Stats Aggregator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body { background-color: #0b0e14; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .card { background-color: #121824; border: 1px solid #1e293b; }
+    .table-row:hover { background-color: #1a2234; }
+  </style>
+</head>
+<body class="p-4 md:p-8 max-w-7xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <div class="bg-red-600 text-white font-extrabold px-3 py-2 rounded-lg text-xl tracking-wider">IV</div>
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+          IronVault <span class="text-xs bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded font-mono">Aggregator</span>
+        </h1>
+        <p class="text-xs text-slate-400">Calculate total statistics across multiple player accounts</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="exportCSV()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-2 transition">
+        <i class="fa-solid fa-file-csv"></i> Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Accounts Input Section -->
+  <div class="card rounded-xl p-4 mb-6">
+    <div class="flex justify-between items-center mb-2">
+      <label class="text-xs font-semibold text-slate-300">Player Accounts (One per line)</label>
+      <button onclick="clearList()" class="text-xs text-slate-500 hover:text-slate-300">Clear list</button>
+    </div>
+    <textarea id="accountsInput" rows="6" class="w-full bg-[#0a0d14] border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono resize-y" placeholder="Enter usernames..."></textarea>
+    
+    <div class="mt-3 flex flex-wrap items-center gap-3">
+      <button id="fetchBtn" onclick="startAggregation()" class="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg flex items-center gap-2 transition disabled:opacity-50">
+        <i class="fa-solid fa-play"></i> Calculate & Fetch All Stats
+      </button>
+      <div id="statusText" class="text-xs text-slate-400">Ready</div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="w-full bg-slate-900 h-1.5 rounded-full mt-3 overflow-hidden">
+      <div id="progressBar" class="bg-red-600 h-full w-0 transition-all duration-200"></div>
+    </div>
+  </div>
+
+  <!-- Cumulative Metric Cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+    <div class="card p-3 rounded-lg border-l-4 border-l-red-500">
+      <div class="text-[10px] uppercase font-bold text-slate-400">Total Kills</div>
+      <div id="totalKills" class="text-lg font-bold text-white mt-1">0</div>
+    </div>
+    <div class="card p-3 rounded-lg border-l-4 border-l-slate-500">
+      <div class="text-[10px] uppercase font-bold text-slate-400">Total Deaths</div>
+      <div id="totalDeaths" class="text-lg font-bold text-white mt-1">0</div>
+    </div>
+    <div class="card p-3 rounded-lg border-l-4 border-l-yellow-500">
+      <div class="text-[10px] uppercase font-bold text-slate-400">Overall K/D</div>
+      <div id="overallKD" class="text-lg font-bold text-yellow-400 mt-1">0.00</div>
+    </div>
+    <div class="card p-3 rounded-lg border-l-4 border-l-emerald-500">
+      <div class="text-[10px] uppercase font-bold text-slate-400">Victories</div>
+      <div id="totalVictories" class="text-lg font-bold text-emerald-400 mt-1">0</div>
+    </div>
+    <div class="card p-3 rounded-lg border-l-4 border-l-rose-500">
+      <div class="text-[10px] uppercase font-bold text-slate-400">Defeats</div>
+      <div id="totalDefeats" class="text-lg font-bold text-rose-400 mt-1">0</div>
+    </div>
+    <div class="card p-3 rounded-lg border-l-4 border-l-blue-500">
+      <div class="text-[10px] uppercase font-bold text-slate-400">Win Rate</div>
+      <div id="overallWinRate" class="text-lg font-bold text-blue-400 mt-1">0.0%</div>
+    </div>
+  </div>
+
+  <!-- Detailed Table -->
+  <div class="card rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-[#161e2e] text-slate-400 uppercase text-[10px] border-b border-slate-800">
+          <tr>
+            <th class="p-3">#</th>
+            <th class="p-3">Player</th>
+            <th class="p-3 text-right">Kills</th>
+            <th class="p-3 text-right">Deaths</th>
+            <th class="p-3 text-right">K/D</th>
+            <th class="p-3 text-right">Victories</th>
+            <th class="p-3 text-right">Defeats</th>
+            <th class="p-3 text-right">Win %</th>
+            <th class="p-3 text-right">Suicides</th>
+            <th class="p-3 text-right">Level</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody" class="divide-y divide-slate-800/60 font-mono">
+          <tr>
+            <td colspan="10" class="p-5 text-center text-slate-500 font-sans">No data loaded yet. Click Calculate to begin.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const defaultAccounts = [
+      "Redflag", "Invincible", "Johnwick", "Biscuit", "Ghost rider",
+      "Lonelymaster", "Drstone", "Not_MAY", "Buffer", "Kimdokja",
+      "Lloydfrontera", "Devilmaycry", "Krishnaichiban", "vengefuldeathbazooka",
+      "Perseverance", "Sudo", "SnakeEyes", "Okaberintarou", "SilverSurfer",
+      "Kernel", "Chmod777", "MoonKnight", "Lelouch Lamperouge", "BrianOConner",
+      "Asta", "Ben 10", "uraharaKisuke", "Ulquiorra", "Bobafett",
+      "HanSolo", "R2-D2", "Pun", "ReidAstrea", "YuuichiKatagiriS",
+      "Julius Juukulius", "Gintoki Sakata", "Isagi Yoichi", "Saiki kusuo",
+      "Black Star", "Sung Jinwoo", "ReigenArataka", "ShigeoKageyama",
+      "Ryuugamine", "Bulbasaur", "Morpheus", "Zenitsu", "Tanjirou",
+      "NotScientist", "Cortex", "Mach3", "Notinvincible", "Incredible"
+    ];
+
+    document.getElementById("accountsInput").value = defaultAccounts.join("\n");
+    let parsedResults = [];
+
+    function clearList() {
+      document.getElementById("accountsInput").value = "";
+    }
+
+    const cleanNum = (val) => {
+      if (val === undefined || val === null) return 0;
+      const n = parseInt(String(val).replace(/[^\d]/g, ""), 10);
+      return isNaN(n) ? 0 : n;
+    };
+
+    async function fetchAccountProfile(username) {
+      try {
+        const response = await fetch("https://ironvault.vercel.app/api/getProfileByUsername", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: username
+        });
+
+        if (!response.ok) return null;
+        const resJson = await response.json();
+        if (resJson && resJson.result && resJson.data) {
+          return resJson.data;
+        }
+        return null;
+      } catch (err) {
+        console.warn(`Direct fetch failed for ${username}`, err);
+        return null;
+      }
+    }
+
+    async function startAggregation() {
+      const lines = document.getElementById("accountsInput").value.split("\n")
+        .map(x => x.trim())
+        .filter(x => x.length > 0);
+
+      if (lines.length === 0) return alert("Please enter at least one account.");
+
+      const fetchBtn = document.getElementById("fetchBtn");
+      const statusText = document.getElementById("statusText");
+      const progressBar = document.getElementById("progressBar");
+      const tableBody = document.getElementById("tableBody");
+
+      fetchBtn.disabled = true;
+      parsedResults = [];
+      tableBody.innerHTML = "";
+
+      let totals = { kills: 0, deaths: 0, victories: 0, defeats: 0, suicides: 0 };
+
+      for (let i = 0; i < lines.length; i++) {
+        const username = lines[i];
+        statusText.innerText = `Fetching (${i + 1}/${lines.length}): ${username}...`;
+        progressBar.style.width = `${Math.round(((i + 1) / lines.length) * 100)}%`;
+
+        const data = await fetchAccountProfile(username);
+
+        let rowData = {
+          user: username,
+          kills: 0,
+          deaths: 0,
+          victories: 0,
+          defeats: 0,
+          suicides: 0,
+          level: 0,
+          kd: "0.00",
+          winRate: "0.0%"
+        };
+
+        if (data) {
+          rowData.kills = cleanNum(data.kills ?? data.totalKills);
+          rowData.deaths = cleanNum(data.deaths ?? data.totalDeaths);
+          rowData.victories = cleanNum(data.victories ?? data.wins);
+          rowData.defeats = cleanNum(data.defeats ?? data.losses);
+          rowData.suicides = cleanNum(data.suicides);
+          rowData.level = cleanNum(data.level);
+
+          rowData.kd = rowData.deaths > 0 ? (rowData.kills / rowData.deaths).toFixed(2) : String(rowData.kills);
+          const totalGames = rowData.victories + rowData.defeats;
+          rowData.winRate = totalGames > 0 ? ((rowData.victories / totalGames) * 100).toFixed(1) + "%" : "0.0%";
+
+          totals.kills += rowData.kills;
+          totals.deaths += rowData.deaths;
+          totals.victories += rowData.victories;
+          totals.defeats += rowData.defeats;
+          totals.suicides += rowData.suicides;
+        }
+
+        parsedResults.push(rowData);
+
+        // Update real-time cumulative totals
+        document.getElementById("totalKills").innerText = totals.kills.toLocaleString();
+        document.getElementById("totalDeaths").innerText = totals.deaths.toLocaleString();
+        document.getElementById("totalVictories").innerText = totals.victories.toLocaleString();
+        document.getElementById("totalDefeats").innerText = totals.defeats.toLocaleString();
+        
+        const combinedGames = totals.victories + totals.defeats;
+        document.getElementById("overallWinRate").innerText = combinedGames > 0 ? ((totals.victories / combinedGames) * 100).toFixed(1) + "%" : "0.0%";
+        document.getElementById("overallKD").innerText = totals.deaths > 0 ? (totals.kills / totals.deaths).toFixed(2) : String(totals.kills);
+
+        // Append to UI table
+        const tr = document.createElement("tr");
+        tr.className = "table-row border-b border-slate-800/40";
+        tr.innerHTML = `
+          <td class="p-3 text-slate-500 font-sans">${i + 1}</td>
+          <td class="p-3 font-semibold text-slate-200">${rowData.user}</td>
+          <td class="p-3 text-right text-red-400 font-bold">${rowData.kills.toLocaleString()}</td>
+          <td class="p-3 text-right text-slate-400">${rowData.deaths.toLocaleString()}</td>
+          <td class="p-3 text-right text-yellow-400 font-bold">${rowData.kd}</td>
+          <td class="p-3 text-right text-emerald-400">${rowData.victories.toLocaleString()}</td>
+          <td class="p-3 text-right text-rose-400">${rowData.defeats.toLocaleString()}</td>
+          <td class="p-3 text-right text-blue-400">${rowData.winRate}</td>
+          <td class="p-3 text-right text-slate-400">${rowData.suicides.toLocaleString()}</td>
+          <td class="p-3 text-right text-slate-200 font-sans">${rowData.level}</td>
+        `;
+        tableBody.appendChild(tr);
+
+        // Polite delay to avoid server rate limiting
+        await new Promise(r => setTimeout(r, 120));
+      }
+
+      statusText.innerText = "Completed all accounts!";
+      fetchBtn.disabled = false;
+    }
+
+    function exportCSV() {
+      if (!parsedResults.length) return alert("No parsed data to export.");
+      let csv = "User,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,Level\n";
+      parsedResults.forEach(r => {
+        csv += `"${r.user}",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.level}\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "tanktrouble_accounts_summary.csv";
+      a.click();
+    }
+  </script>
+</body>
+</html>
