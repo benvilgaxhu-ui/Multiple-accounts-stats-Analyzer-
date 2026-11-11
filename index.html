@@ -11,7 +11,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
-    body { background-color: #0b0e14; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0b0e14; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; }
     .card { background-color: #121824; border: 1px solid #1e293b; }
     .table-row:hover { background-color: #1a2234; }
     .retry-btn:hover { color: #f43f5e; transform: rotate(45deg); }
@@ -30,18 +30,24 @@
       </div>
       <div>
         <div class="flex items-center gap-2">
-          <h1 class="text-xl md:text-2xl font-bold text-white tracking-tight">Multiple Account</h1>
-          <span class="text-[11px] bg-red-950/80 text-red-400 border border-red-800/80 px-2 py-0.5 rounded font-mono font-semibold">Stats Analyzer</span>
+          <h1 id="txt_title" class="text-xl md:text-2xl font-bold text-white tracking-tight">Multiple Account</h1>
+          <span id="txt_badge" class="text-[11px] bg-red-950/80 text-red-400 border border-red-800/80 px-2 py-0.5 rounded font-mono font-semibold">Stats Analyzer</span>
           <span class="text-[11px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded font-sans flex items-center gap-1.5">
-            <i class="fa-solid fa-code text-red-400 text-[10px]"></i> Made by <strong class="text-white font-semibold">Invincible</strong>
+            <i class="fa-solid fa-code text-red-400 text-[10px]"></i> <span id="txt_author">Made by</span> <strong class="text-white font-semibold">Invincible</strong>
           </span>
         </div>
-        <p class="text-xs text-slate-400 mt-0.5">Direct statistics calculation & multi-account aggregation for TankTrouble</p>
+        <p id="txt_subtitle" class="text-xs text-slate-400 mt-0.5">Direct statistics calculation & multi-account aggregation for TankTrouble</p>
       </div>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2.5">
+      <!-- Language Switcher -->
+      <div class="flex items-center bg-slate-900 border border-slate-700/80 rounded-lg p-0.5">
+        <button id="lang_en" onclick="setLanguage('en')" class="px-2.5 py-1 text-xs font-semibold rounded-md transition bg-red-600 text-white">EN</button>
+        <button id="lang_zh" onclick="setLanguage('zh')" class="px-2.5 py-1 text-xs font-semibold rounded-md transition text-slate-400 hover:text-white">中文</button>
+      </div>
+
       <button onclick="exportCSV()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-2 transition">
-        <i class="fa-solid fa-file-csv"></i> Export CSV
+        <i class="fa-solid fa-file-csv"></i> <span id="btn_export_csv">Export CSV</span>
       </button>
     </div>
   </div>
@@ -49,14 +55,14 @@
   <!-- Accounts Input Section -->
   <div class="card rounded-xl p-4 mb-6">
     <div class="flex justify-between items-center mb-2">
-      <label class="text-xs font-semibold text-slate-300">Player Accounts (One per line)</label>
-      <button onclick="clearList()" class="text-xs text-slate-500 hover:text-slate-300">Clear list</button>
+      <label id="lbl_input" class="text-xs font-semibold text-slate-300">Player Accounts (One per line)</label>
+      <button onclick="clearList()" id="btn_clear" class="text-xs text-slate-500 hover:text-slate-300">Clear list</button>
     </div>
     <textarea id="accountsInput" rows="6" class="w-full bg-[#0a0d14] border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-red-500 font-mono resize-y" placeholder="Paste or type player usernames here (one per line)..."></textarea>
     
     <div class="mt-3 flex flex-wrap items-center gap-3">
       <button id="fetchBtn" onclick="startAggregation()" class="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg flex items-center gap-2 transition disabled:opacity-50">
-        <i class="fa-solid fa-play"></i> Calculate & Fetch All Stats
+        <i class="fa-solid fa-play"></i> <span id="btn_calc">Calculate & Fetch All Stats</span>
       </button>
       <div id="statusText" class="text-xs text-slate-400">Ready</div>
     </div>
@@ -69,38 +75,38 @@
   <!-- Cumulative Metric Cards -->
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
     <div class="card p-3 rounded-lg border-l-4 border-l-red-500">
-      <div class="text-[10px] uppercase font-bold text-slate-400">Total Kills</div>
+      <div id="card_lbl_kills" class="text-[10px] uppercase font-bold text-slate-400">Total Kills</div>
       <div id="totalKills" class="text-lg font-bold text-white mt-1">0</div>
     </div>
     <div class="card p-3 rounded-lg border-l-4 border-l-slate-500">
-      <div class="text-[10px] uppercase font-bold text-slate-400">Total Deaths</div>
+      <div id="card_lbl_deaths" class="text-[10px] uppercase font-bold text-slate-400">Total Deaths</div>
       <div id="totalDeaths" class="text-lg font-bold text-white mt-1">0</div>
     </div>
     <div class="card p-3 rounded-lg border-l-4 border-l-yellow-500">
-      <div class="text-[10px] uppercase font-bold text-slate-400">Overall K/D</div>
+      <div id="card_lbl_kd" class="text-[10px] uppercase font-bold text-slate-400">Overall K/D</div>
       <div id="overallKD" class="text-lg font-bold text-yellow-400 mt-1">0.00</div>
     </div>
     <div class="card p-3 rounded-lg border-l-4 border-l-emerald-500">
-      <div class="text-[10px] uppercase font-bold text-slate-400">Victories</div>
+      <div id="card_lbl_wins" class="text-[10px] uppercase font-bold text-slate-400">Victories</div>
       <div id="totalVictories" class="text-lg font-bold text-emerald-400 mt-1">0</div>
     </div>
     <div class="card p-3 rounded-lg border-l-4 border-l-rose-500">
-      <div class="text-[10px] uppercase font-bold text-slate-400">Defeats</div>
+      <div id="card_lbl_defeats" class="text-[10px] uppercase font-bold text-slate-400">Defeats</div>
       <div id="totalDefeats" class="text-lg font-bold text-rose-400 mt-1">0</div>
     </div>
     <div class="card p-3 rounded-lg border-l-4 border-l-blue-500">
-      <div class="text-[10px] uppercase font-bold text-slate-400">Win Rate</div>
+      <div id="card_lbl_winrate" class="text-[10px] uppercase font-bold text-slate-400">Win Rate</div>
       <div id="overallWinRate" class="text-lg font-bold text-blue-400 mt-1">0.0%</div>
     </div>
   </div>
 
   <!-- Table Controls (Sorting Selector) -->
   <div class="flex items-center justify-between mb-3 px-1">
-    <div class="text-xs font-semibold text-slate-400 flex items-center gap-2">
+    <div id="txt_table_heading" class="text-xs font-semibold text-slate-400 flex items-center gap-2">
       <i class="fa-solid fa-list-ol text-slate-500"></i> Player Breakdowns
     </div>
     <div class="flex items-center gap-2">
-      <label class="text-xs text-slate-400">Order by:</label>
+      <label id="lbl_order" class="text-xs text-slate-400">Order by:</label>
       <select id="sortSelect" onchange="applyDropdownSort(this.value)" class="bg-[#121824] border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-red-500 cursor-pointer">
         <option value="original">Original Order (As Entered)</option>
         <option value="kills_desc" selected>Kills: High → Low</option>
@@ -124,37 +130,37 @@
           <tr>
             <th class="p-3">#</th>
             <th class="p-3 sortable" onclick="toggleColumnSort('user')">
-              Player <i id="icon_user" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+              <span id="th_player">Player</span> <i id="icon_user" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
             </th>
             <th class="p-3 text-right sortable" onclick="toggleColumnSort('kills')">
-              Kills <i id="icon_kills" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+              <span id="th_kills">Kills</span> <i id="icon_kills" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
             </th>
             <th class="p-3 text-right sortable" onclick="toggleColumnSort('deaths')">
-              Deaths <i id="icon_deaths" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+              <span id="th_deaths">Deaths</span> <i id="icon_deaths" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
             </th>
             <th class="p-3 text-right sortable" onclick="toggleColumnSort('kd')">
-              K/D <i id="icon_kd" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+              <span id="th_kd">K/D</span> <i id="icon_kd" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
             </th>
             <th class="p-3 text-right sortable" onclick="toggleColumnSort('victories')">
-              Victories <i id="icon_victories" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+              <span id="th_victories">Victories</span> <i id="icon_victories" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
             </th>
             <th class="p-3 text-right sortable" onclick="toggleColumnSort('defeats')">
-              Defeats <i id="icon_defeats" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+              <span id="th_defeats">Defeats</span> <i id="icon_defeats" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
             </th>
             <th class="p-3 text-right sortable" onclick="toggleColumnSort('winRate')">
-              Win % <i id="icon_winRate" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+              <span id="th_winRate">Win %</span> <i id="icon_winRate" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
             </th>
             <th class="p-3 text-right sortable" onclick="toggleColumnSort('suicides')">
-              Suicides <i id="icon_suicides" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+              <span id="th_suicides">Suicides</span> <i id="icon_suicides" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
             </th>
             <th class="p-3 text-right sortable" onclick="toggleColumnSort('level')">
-              Level <i id="icon_level" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
+              <span id="th_level">Level</span> <i id="icon_level" class="fa-solid fa-sort text-[9px] opacity-40 ml-1"></i>
             </th>
           </tr>
         </thead>
         <tbody id="tableBody" class="divide-y divide-slate-800/60 font-mono">
           <tr>
-            <td colspan="10" class="p-5 text-center text-slate-500 font-sans">No data loaded yet. Enter usernames above and click calculate.</td>
+            <td id="empty_row_text" colspan="10" class="p-5 text-center text-slate-500 font-sans">No data loaded yet. Enter usernames above and click calculate.</td>
           </tr>
         </tbody>
       </table>
@@ -165,18 +171,196 @@
   <footer class="mt-auto py-4 border-t border-slate-800/60 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
     <div class="flex items-center gap-2">
       <i class="fa-solid fa-shield-halved text-red-500"></i>
-      <span>Multiple Account Stats Analyzer</span>
+      <span id="txt_footer_title">Multiple Account Stats Analyzer</span>
     </div>
     <div>
-      Engineered by <span class="text-slate-300 font-semibold hover:text-red-400 transition cursor-default">Invincible</span>
+      <span id="txt_footer_dev">Engineered by</span> <span class="text-slate-300 font-semibold hover:text-red-400 transition cursor-default">Invincible</span>
     </div>
   </footer>
 
   <script>
+    let currentLang = "en";
     let parsedResults = [];
     let sortColumn = "kills";
     let sortDirection = "desc";
     let isOriginalOrder = false;
+
+    const translations = {
+      en: {
+        title: "Multiple Account",
+        badge: "Stats Analyzer",
+        author: "Made by",
+        subtitle: "Direct statistics calculation & multi-account aggregation for TankTrouble",
+        export_csv: "Export CSV",
+        input_label: "Player Accounts (One per line)",
+        clear_btn: "Clear list",
+        placeholder: "Paste or type player usernames here (one per line)...",
+        calc_btn: "Calculate & Fetch All Stats",
+        ready: "Ready",
+        card_kills: "Total Kills",
+        card_deaths: "Total Deaths",
+        card_kd: "Overall K/D",
+        card_wins: "Victories",
+        card_defeats: "Defeats",
+        card_winrate: "Win Rate",
+        table_heading: '<i class="fa-solid fa-list-ol text-slate-500"></i> Player Breakdowns',
+        order_by: "Order by:",
+        th_player: "Player",
+        th_kills: "Kills",
+        th_deaths: "Deaths",
+        th_kd: "K/D",
+        th_victories: "Victories",
+        th_defeats: "Defeats",
+        th_winRate: "Win %",
+        th_suicides: "Suicides",
+        th_level: "Level",
+        no_data: "No data loaded yet. Enter usernames above and click calculate.",
+        not_found: "Not Found",
+        footer_title: "Multiple Account Stats Analyzer",
+        footer_dev: "Engineered by",
+        alert_no_users: "Please enter at least one account username.",
+        alert_no_export: "No parsed data to export.",
+        querying: "Querying",
+        retrying: "Retrying",
+        updated: "Updated",
+        still_not_found: "still not found.",
+        completed: "Completed all accounts!",
+        lvl_prefix: "Lvl",
+        sort_opts: {
+          original: "Original Order (As Entered)",
+          kills_desc: "Kills: High → Low",
+          kills_asc: "Kills: Low → High",
+          deaths_desc: "Deaths: High → Low",
+          kd_desc: "K/D: High → Low",
+          kd_asc: "K/D: Low → High",
+          victories_desc: "Wins: High → Low",
+          winrate_desc: "Win Rate: High → Low",
+          level_desc: "Level: High → Low",
+          user_asc: "Name: A → Z"
+        }
+      },
+      zh: {
+        title: "多账号统计",
+        badge: "数据分析器",
+        author: "开发者",
+        subtitle: "TankTrouble 多账号战绩聚合分析与数据自动计算",
+        export_csv: "导出 CSV 表格",
+        input_label: "玩家账号列表（每行一个）",
+        clear_btn: "清空输入",
+        placeholder: "在此输入或粘贴玩家账号用户名（每行一个）...",
+        calc_btn: "开始获取并计算全部战绩",
+        ready: "就绪",
+        card_kills: "总击杀数",
+        card_deaths: "总阵亡数",
+        card_kd: "综合 K/D",
+        card_wins: "总胜场",
+        card_defeats: "总败场",
+        card_winrate: "综合胜率",
+        table_heading: '<i class="fa-solid fa-list-ol text-slate-500"></i> 玩家数据明细',
+        order_by: "排序方式:",
+        th_player: "玩家",
+        th_kills: "击杀",
+        th_deaths: "阵亡",
+        th_kd: "K/D",
+        th_victories: "胜场",
+        th_defeats: "败场",
+        th_winRate: "胜率 %",
+        th_suicides: "自杀",
+        th_level: "等级",
+        no_data: "暂无数据。请在上方输入用户名并点击计算。",
+        not_found: "未找到账号",
+        footer_title: "多账号战绩聚合分析器",
+        footer_dev: "技术开发",
+        alert_no_users: "请至少输入一个玩家用户名。",
+        alert_no_export: "没有可导出的数据。",
+        querying: "正在查询",
+        retrying: "正在重试",
+        updated: "已更新",
+        still_not_found: "仍然未找到。",
+        completed: "所有账号查询完毕！",
+        lvl_prefix: "等级",
+        sort_opts: {
+          original: "原始输入顺序",
+          kills_desc: "击杀: 高 → 低",
+          kills_asc: "击杀: 低 → 高",
+          deaths_desc: "阵亡: 高 → 低",
+          kd_desc: "K/D: 高 → 低",
+          kd_asc: "K/D: 低 → 高",
+          victories_desc: "胜场: 高 → 低",
+          winrate_desc: "胜率: 高 → 低",
+          level_desc: "等级: 高 → 低",
+          user_asc: "用户名: A → Z"
+        }
+      }
+    };
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      const t = translations[lang];
+
+      // Toggle UI button active states
+      document.getElementById("lang_en").className = lang === "en" ? "px-2.5 py-1 text-xs font-semibold rounded-md transition bg-red-600 text-white" : "px-2.5 py-1 text-xs font-semibold rounded-md transition text-slate-400 hover:text-white";
+      document.getElementById("lang_zh").className = lang === "zh" ? "px-2.5 py-1 text-xs font-semibold rounded-md transition bg-red-600 text-white" : "px-2.5 py-1 text-xs font-semibold rounded-md transition text-slate-400 hover:text-white";
+
+      // Header & Subtitles
+      document.getElementById("txt_title").innerText = t.title;
+      document.getElementById("txt_badge").innerText = t.badge;
+      document.getElementById("txt_author").innerText = t.author;
+      document.getElementById("txt_subtitle").innerText = t.subtitle;
+      document.getElementById("btn_export_csv").innerText = t.export_csv;
+
+      // Inputs
+      document.getElementById("lbl_input").innerText = t.input_label;
+      document.getElementById("btn_clear").innerText = t.clear_btn;
+      document.getElementById("accountsInput").placeholder = t.placeholder;
+      document.getElementById("btn_calc").innerText = t.calc_btn;
+
+      // Cards
+      document.getElementById("card_lbl_kills").innerText = t.card_kills;
+      document.getElementById("card_lbl_deaths").innerText = t.card_deaths;
+      document.getElementById("card_lbl_kd").innerText = t.card_kd;
+      document.getElementById("card_lbl_wins").innerText = t.card_wins;
+      document.getElementById("card_lbl_defeats").innerText = t.card_defeats;
+      document.getElementById("card_lbl_winrate").innerText = t.card_winrate;
+
+      // Table Headers & Controls
+      document.getElementById("txt_table_heading").innerHTML = t.table_heading;
+      document.getElementById("lbl_order").innerText = t.order_by;
+      document.getElementById("th_player").innerText = t.th_player;
+      document.getElementById("th_kills").innerText = t.th_kills;
+      document.getElementById("th_deaths").innerText = t.th_deaths;
+      document.getElementById("th_kd").innerText = t.th_kd;
+      document.getElementById("th_victories").innerText = t.th_victories;
+      document.getElementById("th_defeats").innerText = t.th_defeats;
+      document.getElementById("th_winRate").innerText = t.th_winRate;
+      document.getElementById("th_suicides").innerText = t.th_suicides;
+      document.getElementById("th_level").innerText = t.th_level;
+
+      // Select Dropdown Options
+      const select = document.getElementById("sortSelect");
+      for (const [val, text] of Object.entries(t.sort_opts)) {
+        const opt = select.querySelector(`option[value="${val}"]`);
+        if (opt) opt.innerText = text;
+      }
+
+      // Footer
+      document.getElementById("txt_footer_title").innerText = t.footer_title;
+      document.getElementById("txt_footer_dev").innerText = t.footer_dev;
+
+      // Status bar check
+      const statusEl = document.getElementById("statusText");
+      if (statusEl.innerText === "Ready" || statusEl.innerText === "就绪") {
+        statusEl.innerText = t.ready;
+      }
+
+      // Re-render table if data exists
+      if (parsedResults.length) {
+        renderTable();
+      } else {
+        const emptyCell = document.getElementById("empty_row_text");
+        if (emptyCell) emptyCell.innerText = t.no_data;
+      }
+    }
 
     function clearList() {
       document.getElementById("accountsInput").value = "";
@@ -201,111 +385,99 @@
     }
 
     // Direct TankTrouble Official JSON-RPC Engine
-    // 1. Direct TankTrouble JSON-RPC via CORS Proxy Wrapper
-async function queryTankTroubleRPC(username) {
-  const rpcPayload = {
-    jsonrpc: "2.0",
-    method: "tanktrouble.getPlayerDetails",
-    id: 1,
-    params: [username]
-  };
+    async function queryTankTroubleRPC(username) {
+      const rpcPayload = {
+        jsonrpc: "2.0",
+        method: "tanktrouble.getPlayerDetails",
+        id: 1,
+        params: [username]
+      };
 
-  // List of public CORS bridges that forward POST requests
-  const proxyEndpoints = [
-    {
-      url: "https://corsproxy.io/?url=" + encodeURIComponent("https://tanktrouble.com/ajax/"),
-      headers: { "Content-Type": "application/json" }
-    },
-    {
-      url: "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://tanktrouble.com/ajax/"),
-      headers: { "Content-Type": "application/json" }
-    }
-  ];
-
-  // Try direct first (works inside extension/userscript environments)
-  try {
-    const directRes = await fetch("https://tanktrouble.com/ajax/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(rpcPayload),
-      signal: AbortSignal.timeout(2200)
-    });
-    if (directRes.ok) {
-      const json = await directRes.json();
-      if (json && json.result && json.result.data) return json.result.data;
-    }
-  } catch (e) {
-    // Direct blocked by browser CORS, continue to proxies
-  }
-
-  // Try CORS bridge wrappers
-  for (let proxy of proxyEndpoints) {
-    try {
-      const res = await fetch(proxy.url, {
-        method: "POST",
-        headers: proxy.headers,
-        body: JSON.stringify(rpcPayload),
-        signal: AbortSignal.timeout(3500)
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json && json.result && json.result.data) {
-          return json.result.data;
+      const proxyEndpoints = [
+        {
+          url: "https://corsproxy.io/?url=" + encodeURIComponent("https://tanktrouble.com/ajax/"),
+          headers: { "Content-Type": "application/json" }
+        },
+        {
+          url: "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://tanktrouble.com/ajax/"),
+          headers: { "Content-Type": "application/json" }
         }
+      ];
+
+      try {
+        const directRes = await fetch("https://tanktrouble.com/ajax/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(rpcPayload),
+          signal: AbortSignal.timeout(2200)
+        });
+        if (directRes.ok) {
+          const json = await directRes.json();
+          if (json && json.result && json.result.data) return json.result.data;
+        }
+      } catch (e) {}
+
+      for (let proxy of proxyEndpoints) {
+        try {
+          const res = await fetch(proxy.url, {
+            method: "POST",
+            headers: proxy.headers,
+            body: JSON.stringify(rpcPayload),
+            signal: AbortSignal.timeout(3500)
+          });
+          if (res.ok) {
+            const json = await res.json();
+            if (json && json.result && json.result.data) {
+              return json.result.data;
+            }
+          }
+        } catch (err) {}
       }
-    } catch (err) {
-      // Continue to next bridge
+
+      return null;
     }
-  }
 
-  return null;
-}
+    // IronVault Fallback
+    async function queryIronVaultFallback(username) {
+      try {
+        const res = await fetch("https://ironvault.vercel.app/api/getProfileByUsername", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: username,
+          signal: AbortSignal.timeout(3500)
+        });
 
-// 2. IronVault Silent Fallback (Guaranteed to bypass CORS on GitHub Pages)
-async function queryIronVaultFallback(username) {
-  try {
-    const res = await fetch("https://ironvault.vercel.app/api/getProfileByUsername", {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
-      body: username,
-      signal: AbortSignal.timeout(3500)
-    });
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.result && json.data) {
+            return json.data;
+          }
+        }
+      } catch (err) {}
+      return null;
+    }
 
-    if (res.ok) {
-      const json = await res.json();
-      if (json && json.result && json.data) {
-        return json.data;
+    async function fetchAccountDirect(rawUsername, onStatus) {
+      const u = rawUsername.trim();
+      if (!u) return null;
+
+      const candidates = [u];
+      if (u.includes("_")) candidates.push(u.replace(/_/g, " "));
+      const spaced = u.replace(/([a-z])([A-Z])/g, '$1 $2');
+      if (spaced !== u) candidates.push(spaced);
+      const joined = u.replace(/\s+/g, '');
+      if (joined !== u) candidates.push(joined);
+
+      for (let cand of candidates) {
+        let data = await queryTankTroubleRPC(cand);
+        if (data) return data;
+
+        data = await queryIronVaultFallback(cand);
+        if (data) return data;
       }
+      return null;
     }
-  } catch (err) {}
-  return null;
-}
 
-// 3. Combined Dual-Engine Fetcher
-async function fetchAccountDirect(rawUsername, onStatus) {
-  const u = rawUsername.trim();
-  if (!u) return null;
-
-  const candidates = [u];
-  if (u.includes("_")) candidates.push(u.replace(/_/g, " "));
-  const spaced = u.replace(/([a-z])([A-Z])/g, '$1 $2');
-  if (spaced !== u) candidates.push(spaced);
-  const joined = u.replace(/\s+/g, '');
-  if (joined !== u) candidates.push(joined);
-
-  for (let cand of candidates) {
-    // Step 1: TankTrouble Native RPC
-    let data = await queryTankTroubleRPC(cand);
-    if (data) return data;
-
-    // Step 2: Fallback Engine
-    data = await queryIronVaultFallback(cand);
-    if (data) return data;
-  }
-  return null;
-}
-
-    // Dropdown change handler
     function applyDropdownSort(mode) {
       if (mode === "original") {
         isOriginalOrder = true;
@@ -319,7 +491,6 @@ async function fetchAccountDirect(rawUsername, onStatus) {
       renderTable();
     }
 
-    // Header click handler (Toggles Asc/Desc)
     function toggleColumnSort(col) {
       isOriginalOrder = false;
       if (sortColumn === col) {
@@ -355,7 +526,13 @@ async function fetchAccountDirect(rawUsername, onStatus) {
     }
 
     function renderTable() {
-      if (!parsedResults.length) return;
+      const t = translations[currentLang];
+      const tableBody = document.getElementById("tableBody");
+
+      if (!parsedResults.length) {
+        tableBody.innerHTML = `<tr><td id="empty_row_text" colspan="10" class="p-5 text-center text-slate-500 font-sans">${t.no_data}</td></tr>`;
+        return;
+      }
 
       let displayList = [...parsedResults];
 
@@ -387,7 +564,6 @@ async function fetchAccountDirect(rawUsername, onStatus) {
         }
       });
 
-      const tableBody = document.getElementById("tableBody");
       tableBody.innerHTML = "";
 
       displayList.forEach((rowData, idx) => {
@@ -405,19 +581,19 @@ async function fetchAccountDirect(rawUsername, onStatus) {
             <td class="p-3 text-right text-rose-400">${rowData.defeats.toLocaleString()}</td>
             <td class="p-3 text-right text-blue-400 font-bold">${rowData.winRate}</td>
             <td class="p-3 text-right text-slate-400">${rowData.suicides.toLocaleString()}</td>
-            <td class="p-3 text-right text-slate-100 font-sans font-bold">Lvl ${rowData.level}</td>
+            <td class="p-3 text-right text-slate-100 font-sans font-bold">${t.lvl_prefix} ${rowData.level}</td>
           `;
         } else {
           tr.innerHTML = `
             <td class="p-3 text-slate-500 font-sans">${idx + 1}</td>
             <td class="p-3 font-semibold text-slate-400 flex items-center gap-2">
               <span>${rowData.user}</span>
-              <button onclick="retrySingleAccount('${rowData.user.replace(/'/g, "\\'")}')" title="Retry fetching this account" class="retry-btn text-slate-500 hover:text-red-400 text-xs p-1">
+              <button onclick="retrySingleAccount('${rowData.user.replace(/'/g, "\\'")}')" title="Retry" class="retry-btn text-slate-500 hover:text-red-400 text-xs p-1">
                 <i class="fa-solid fa-arrows-rotate"></i>
               </button>
             </td>
             <td colspan="7" class="p-3 text-center text-xs text-rose-500 font-sans font-medium">
-              <span class="bg-rose-950/70 border border-rose-800/80 px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wide">Not Found</span>
+              <span class="bg-rose-950/70 border border-rose-800/80 px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wide">${t.not_found}</span>
             </td>
             <td class="p-3 text-right text-slate-600 font-sans">-</td>
           `;
@@ -451,8 +627,9 @@ async function fetchAccountDirect(rawUsername, onStatus) {
     }
 
     async function retrySingleAccount(username) {
+      const t = translations[currentLang];
       const statusText = document.getElementById("statusText");
-      statusText.innerText = `Retrying: ${username}...`;
+      statusText.innerText = `${t.retrying}: ${username}...`;
 
       const data = await fetchAccountDirect(username, (msg) => {
         statusText.innerText = msg;
@@ -484,9 +661,9 @@ async function fetchAccountDirect(rawUsername, onStatus) {
           updatedRow.winRate = totalGames > 0 ? ((updatedRow.victories / totalGames) * 100).toFixed(1) + "%" : "0.0%";
 
           parsedResults[index] = updatedRow;
-          statusText.innerText = `Updated ${username}!`;
+          statusText.innerText = `${t.updated} ${username}!`;
         } else {
-          statusText.innerText = `${username} still not found.`;
+          statusText.innerText = `${username} ${t.still_not_found}`;
         }
         updateCards();
         renderTable();
@@ -494,11 +671,12 @@ async function fetchAccountDirect(rawUsername, onStatus) {
     }
 
     async function startAggregation() {
+      const t = translations[currentLang];
       const lines = document.getElementById("accountsInput").value.split("\n")
         .map(x => x.trim())
         .filter(x => x.length > 0);
 
-      if (lines.length === 0) return alert("Please enter at least one account username.");
+      if (lines.length === 0) return alert(t.alert_no_users);
 
       const fetchBtn = document.getElementById("fetchBtn");
       const statusText = document.getElementById("statusText");
@@ -509,7 +687,7 @@ async function fetchAccountDirect(rawUsername, onStatus) {
 
       for (let i = 0; i < lines.length; i++) {
         const username = lines[i];
-        statusText.innerText = `Querying (${i + 1}/${lines.length}): ${username}...`;
+        statusText.innerText = `${t.querying} (${i + 1}/${lines.length}): ${username}...`;
         progressBar.style.width = `${Math.round(((i + 1) / lines.length) * 100)}%`;
 
         const data = await fetchAccountDirect(username, (msg) => {
@@ -556,25 +734,31 @@ async function fetchAccountDirect(rawUsername, onStatus) {
         await new Promise(r => setTimeout(r, 200));
       }
 
-      statusText.innerText = "Completed all accounts!";
+      statusText.innerText = t.completed;
       fetchBtn.disabled = false;
       updateSortIcons();
     }
 
     function exportCSV() {
-      if (!parsedResults.length) return alert("No parsed data to export.");
-      let csv = "Rank,User,Status,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,Level\n";
+      const t = translations[currentLang];
+      if (!parsedResults.length) return alert(t.alert_no_export);
+      let csv = currentLang === "zh"
+        ? "排名,玩家用户名,状态,击杀,阵亡,K/D,胜场,败场,胜率,自杀,等级\n"
+        : "Rank,User,Status,Kills,Deaths,K/D,Victories,Defeats,WinRate,Suicides,Level\n";
+
       parsedResults.forEach((r, idx) => {
         if (r.found) {
-          csv += `${idx + 1},"${r.user}","Found",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.level}\n`;
+          const status = currentLang === "zh" ? "正常" : "Found";
+          csv += `${idx + 1},"${r.user}","${status}",${r.kills},${r.deaths},${r.kd},${r.victories},${r.defeats},"${r.winRate}",${r.suicides},${r.level}\n`;
         } else {
-          csv += `${idx + 1},"${r.user}","Not Found",0,0,0,0,0,0%,0,0\n`;
+          const status = currentLang === "zh" ? "未找到" : "Not Found";
+          csv += `${idx + 1},"${r.user}","${status}",0,0,0,0,0,0%,0,0\n`;
         }
       });
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "multiple_accounts_stats_summary.csv";
+      a.download = currentLang === "zh" ? "tanktrouble_多账号战绩统计汇总.csv" : "multiple_accounts_stats_summary.csv";
       a.click();
     }
   </script>
